@@ -14,6 +14,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: any) {
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
     const [previewTasks, setPreviewTasks] = useState<ExtractedTask[]>([]);
+    const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
     const [status, setStatus] = useState<'IDLE' | 'EXTRACTING' | 'PREVIEW' | 'IMPORTING' | 'SUCCESS'>('IDLE');
     const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +57,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: any) {
             });
 
             setPreviewTasks(tasksWithSchedule);
+            setSelectedIndices(new Set(tasksWithSchedule.map((_: any, i: number) => i)));
             setStatus('PREVIEW');
         } catch (err) {
             console.error(err);
@@ -67,12 +69,13 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: any) {
     };
 
     const handleImport = async () => {
+        if (selectedIndices.size === 0) return;
         setLoading(true);
         setStatus('IMPORTING');
         try {
             // Sequential import for simplicity and to avoid rate limits/concurency issues
-            for (const task of previewTasks) {
-                await api.post('/tasks', task);
+            for (const idx of Array.from(selectedIndices)) {
+                await api.post('/tasks', previewTasks[idx]);
             }
             setStatus('SUCCESS');
             setTimeout(() => {
@@ -91,8 +94,27 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: any) {
     const reset = () => {
         setFile(null);
         setPreviewTasks([]);
+        setSelectedIndices(new Set());
         setStatus('IDLE');
         setError(null);
+    };
+
+    const toggleSelection = (idx: number) => {
+        const newSet = new Set(selectedIndices);
+        if (newSet.has(idx)) {
+            newSet.delete(idx);
+        } else {
+            newSet.add(idx);
+        }
+        setSelectedIndices(newSet);
+    };
+
+    const toggleAll = () => {
+        if (selectedIndices.size === previewTasks.length) {
+            setSelectedIndices(new Set());
+        } else {
+            setSelectedIndices(new Set(previewTasks.map((_, i) => i)));
+        }
     };
 
     if (!isOpen) return null;
@@ -153,14 +175,27 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: any) {
                     {status === 'PREVIEW' && (
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
-                                <h3 className="font-black text-neutral-800 uppercase tracking-wider text-xs">Identified Tasks ({previewTasks.length})</h3>
+                                <div className="flex items-center gap-3">
+                                    <h3 className="font-black text-neutral-800 uppercase tracking-wider text-xs">Identified Tasks ({previewTasks.length})</h3>
+                                    <button onClick={toggleAll} className="text-[10px] font-bold text-brand-500 hover:text-brand-600 bg-brand-50 hover:bg-brand-100 px-2 py-1 rounded transition-colors uppercase tracking-wider">
+                                        {selectedIndices.size === previewTasks.length ? 'Deselect All' : 'Select All'}
+                                    </button>
+                                </div>
                                 <button onClick={reset} className="text-xs font-bold text-neutral-400 hover:text-red-500 transition-colors">Start Over</button>
                             </div>
                             <div className="border border-neutral-100 rounded-xl overflow-hidden divide-y divide-neutral-50">
                                 {previewTasks.map((task, idx) => (
-                                    <div key={idx} className="p-4 bg-white hover:bg-neutral-50/50 transition-colors flex gap-4">
+                                    <label key={idx} className={`p-4 hover:bg-neutral-50 transition-colors flex gap-4 cursor-pointer items-start border-l-4 ${selectedIndices.has(idx) ? 'bg-white border-brand-500' : 'bg-neutral-50/30 border-transparent text-neutral-400 opacity-60'}`}>
+                                        <div className="pt-1">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIndices.has(idx)}
+                                                onChange={() => toggleSelection(idx)}
+                                                className="w-4 h-4 text-brand-500 rounded border-neutral-300 focus:ring-brand-500 focus:ring-offset-0 cursor-pointer"
+                                            />
+                                        </div>
                                         <div className="flex-1">
-                                            <div className="font-bold text-neutral-800">{task.title}</div>
+                                            <div className="font-bold">{task.title}</div>
                                             <div className="text-xs text-neutral-400 line-clamp-1">{task.description || 'No description extracted.'}</div>
                                         </div>
                                         <div className="flex items-center">
@@ -170,11 +205,11 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: any) {
                                                 {task.priority}
                                             </span>
                                         </div>
-                                    </div>
+                                    </label>
                                 ))}
                             </div>
-                            <button onClick={handleImport} disabled={loading} className="w-full py-4 bg-neutral-900 hover:bg-black text-white font-black rounded-xl shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 uppercase tracking-widest text-sm">
-                                {loading ? <Loader2 className="animate-spin" size={20} /> : `Import ${previewTasks.length} Tasks`}
+                            <button onClick={handleImport} disabled={loading || selectedIndices.size === 0} className={`w-full py-4 text-white font-black rounded-xl shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 uppercase tracking-widest text-sm ${selectedIndices.size === 0 ? 'bg-neutral-300 cursor-not-allowed shadow-none text-neutral-500' : 'bg-neutral-900 hover:bg-black'}`}>
+                                {loading ? <Loader2 className="animate-spin" size={20} /> : `Import ${selectedIndices.size} Selected Task${selectedIndices.size === 1 ? '' : 's'}`}
                             </button>
                         </div>
                     )}
