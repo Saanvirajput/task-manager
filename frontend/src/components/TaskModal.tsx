@@ -10,6 +10,8 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
     const [status, setStatus] = useState('TODO');
     const [priority, setPriority] = useState('MEDIUM');
     const [cveId, setCveId] = useState('');
+    const [dueDate, setDueDate] = useState('');
+    const [reminderTime, setReminderTime] = useState('');
     const [attachment, setAttachment] = useState<File | null>(null);
 
     useEffect(() => {
@@ -19,6 +21,8 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
             setStatus(task.status);
             setPriority(task.priority);
             setCveId(task.cveId || '');
+            setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : '');
+            setReminderTime(task.reminderTime ? new Date(task.reminderTime).toISOString().slice(0, 16) : '');
             setAttachment(null);
         } else {
             setTitle('');
@@ -26,6 +30,8 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
             setStatus('TODO');
             setPriority('MEDIUM');
             setCveId('');
+            setDueDate('');
+            setReminderTime('');
             setAttachment(null);
         }
     }, [task]);
@@ -39,6 +45,8 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
             formData.append('status', status);
             formData.append('priority', priority);
             if (cveId) formData.append('cveId', cveId);
+            if (dueDate) formData.append('dueDate', new Date(dueDate).toISOString());
+            if (reminderTime) formData.append('reminderTime', new Date(reminderTime).toISOString());
             if (attachment) formData.append('attachment', attachment);
 
             if (task) {
@@ -98,6 +106,17 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
                                 <option value="MEDIUM">Medium</option>
                                 <option value="HIGH">High</option>
                             </select>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-neutral-800 mb-1">Due Date</label>
+                            <input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-neutral-800 mb-1">Reminder Time</label>
+                            <input type="datetime-local" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} className="w-full" />
+                            <p className="text-xs text-neutral-400 mt-0.5">Auto-set to 1hr before due date if left empty</p>
                         </div>
                     </div>
                     <div>

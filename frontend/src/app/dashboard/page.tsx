@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import TaskModal from '@/components/TaskModal';
 import ImportModal from '@/components/ImportModal';
+import NotificationBell from '@/components/NotificationBell';
 
 export default function DashboardPage() {
     const { user, logout, loading: authLoading } = useAuth();
@@ -86,7 +87,8 @@ export default function DashboardPage() {
                         <h1 className="text-2xl font-bold font-neutral-800">Welcome, {user.name}</h1>
                         <p className="text-neutral-500 font-medium text-sm">Here's what's happening today.</p>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 items-center">
+                        <NotificationBell />
                         <button onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white font-bold rounded-lg shadow-lg hover:bg-black transition-all">
                             <FileText size={20} /> Import PDF
                         </button>
@@ -182,6 +184,7 @@ export default function DashboardPage() {
                                 <th className="px-6 py-4">CVE / Ref</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4">Priority</th>
+                                <th className="px-6 py-4">Due Date</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
@@ -229,6 +232,21 @@ export default function DashboardPage() {
                                             }`}>
                                             {task.priority}
                                         </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {task.dueDate ? (
+                                            <span className={`text-xs font-medium ${new Date(task.dueDate) < new Date() && task.status !== 'DONE'
+                                                    ? 'text-red-600 font-bold'
+                                                    : 'text-neutral-500'
+                                                }`}>
+                                                {new Date(task.dueDate).toLocaleDateString()}
+                                                {new Date(task.dueDate) < new Date() && task.status !== 'DONE' && (
+                                                    <span className="ml-1 text-red-500">⚠️</span>
+                                                )}
+                                            </span>
+                                        ) : (
+                                            <span className="text-neutral-300 text-xs">—</span>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 text-neutral-500 text-sm">
                                         {new Date(task.createdAt).toLocaleDateString()}

@@ -10,7 +10,15 @@ const prisma = new PrismaClient();
 export const createTask = async (req: AuthRequest, res: Response) => {
     try {
         console.log('Creating task:', req.body, 'for user:', req.userId);
-        const { title, description, status, priority, cveId } = req.body;
+        const { title, description, status, priority, cveId, dueDate, reminderTime } = req.body;
+
+        // Auto-set reminderTime to 1 hour before dueDate if not provided
+        let computedReminderTime = reminderTime ? new Date(reminderTime) : undefined;
+        const parsedDueDate = dueDate ? new Date(dueDate) : undefined;
+        if (parsedDueDate && !computedReminderTime) {
+            computedReminderTime = new Date(parsedDueDate.getTime() - 60 * 60 * 1000);
+        }
+
         const task = await prisma.task.create({
             data: {
                 title,
@@ -18,6 +26,8 @@ export const createTask = async (req: AuthRequest, res: Response) => {
                 status: (status as Status) || Status.TODO,
                 priority: (priority as Priority) || Priority.MEDIUM,
                 cveId,
+                dueDate: parsedDueDate,
+                reminderTime: computedReminderTime,
                 attachmentName: req.file?.originalname,
                 attachmentUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
                 userId: req.userId!
@@ -86,24 +96,40 @@ export const getTasks = async (req: AuthRequest, res: Response) => {
 export const updateTask = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { title, description, status, priority, cveId } = req.body;
+        const { title, description, status, priority, cveId, dueDate, reminderTime } = req.body;
+
+        // Auto-set reminderTime to 1 hour before dueDate if not provided
+        let computedReminderTime = reminderTime ? new Date(reminderTime) : undefined;
+        const parsedDueDate = dueDate ? new Date(dueDate) : undefined;
+        if (parsedDueDate && !computedReminderTime) {
+            computedReminderTime = new Date(parsedDueDate.getTime() - 60 * 60 * 1000);
+        }
+
+        const updateData: any = {
+            title,
+            description,
+            status: status as Status,
+            priority: priority as Priority,
+            cveId,
+            ...(parsedDueDate && { dueDate: parsedDueDate }),
+            ...(computedReminderTime && { reminderTime: computedReminderTime, isNotified: false }),
+            ...(req.file && {
+                attachmentName: req.file.originalname,
+                attachmentUrl: `/uploads/${req.file.filename}`
+            }),
+        };
+
+        // If task is marked DONE, reset overdue flag
+        if (status === 'DONE') {
+            updateData.isOverdueNotified = true;
+        }
 
         await prisma.task.updateMany({
             where: {
                 id: id as string,
                 userId: req.userId!
             },
-            data: {
-                title,
-                description,
-                status: status as Status,
-                priority: priority as Priority,
-                cveId,
-                ...(req.file && {
-                    attachmentName: req.file.originalname,
-                    attachmentUrl: `/uploads/${req.file.filename}`
-                })
-            }
+            data: updateData
         });
 
         const updatedTask = await prisma.task.findUnique({ where: { id: id as string } });

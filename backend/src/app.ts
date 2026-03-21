@@ -7,7 +7,9 @@ import path from 'path';
 import authRoutes from './routes/auth.routes';
 import taskRoutes from './routes/task.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import notificationRoutes from './routes/notification.routes';
 import { errorHandler } from './middleware/error.middleware';
+import { startReminderJob } from './jobs/reminder.job';
 
 // Initialize env vars before the app starts
 dotenv.config();
@@ -23,11 +25,15 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationRoutes);
+
+// Start background jobs
+startReminderJob();
 
 app.get('/api', (req: Request, res: Response) => {
     res.json({
         message: 'Task Management System API',
-        endpoints: ['/api/auth', '/api/tasks', '/api/analytics', '/health']
+        endpoints: ['/api/auth', '/api/tasks', '/api/analytics', '/api/notifications', '/health']
     });
 });
 

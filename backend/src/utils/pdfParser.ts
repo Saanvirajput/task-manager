@@ -16,7 +16,10 @@ export interface ExtractedPlan {
 
 export const parsePdfTasks = async (dataBuffer: Buffer): Promise<ExtractedPlan> => {
     try {
-        const apiKey = "REDACTED_BY_ANTIGRAVITY";
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            throw new Error('GEMINI_API_KEY environment variable is not set');
+        }
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
 
         const base64Pdf = dataBuffer.toString('base64');
