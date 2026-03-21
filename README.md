@@ -109,7 +109,7 @@ task-manager/
 
 ### 1. Clone & Install
 ```bash
-git clone https://github.com/tanmaymish/task-manager.git
+git clone https://github.com/Saanvirajput/task-manager.git
 cd task-manager
 npm run install:all
 ```
