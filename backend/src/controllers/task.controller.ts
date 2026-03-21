@@ -1,0 +1,116 @@
+import { Response } from 'express';
+import { AuthRequest } from '../middleware/auth.middleware';
+import prisma from '../utils/prisma';
+import { Status, Priority } from '@prisma/client';
+
+export const createTask = async (req: AuthRequest, res: Response) => {
+    try {
+        console.log('Creating task:', req.body, 'for user:', req.userId);
+        const { title, description, status, priority } = req.body;
+        const task = await prisma.task.create({
+            data: {
+                title,
+                description,
+                status: (status as Status) || Status.TODO,
+                priority: (priority as Priority) || Priority.MEDIUM,
+                userId: req.userId!
+            }
+        });
+        console.log('Task created successfully:', task.id);
+        res.status(201).json(task);
+    } catch (error) {
+        console.error('Analytics Error:', error);
+        res.status(500).json({ error: 'Failed to fetch analytics' });
+    }
+};
+
+export const getTasks = async (req: AuthRequest, res: Response) => {
+    try {
+        const { page = 1, limit = 10 } = req.query;
+        const skip = (Number(page) - 1) * Number(limit);
+        const take = Number(limit);
+
+        const where: any = { userId: req.userId };
+
+        const status = req.query.status as string;
+        const priority = req.query.priority as string;
+        const search = req.query.search as string;
+        const from = req.query.from as string;
+        const to = req.query.to as string;
+
+        if (status) where.status = status as Status;
+        if (priority) where.priority = priority as Priority;
+        if (search) {
+            where.OR = [
+                { title: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } }
+            ];
+        }
+        if (from || to) {
+            where.createdAt = {};
+            if (from) where.createdAt.gte = new Date(from);
+            if (to) where.createdAt.lte = new Date(to);
+        }
+
+        const [tasks, total] = await Promise.all([
+            prisma.task.findMany({
+                where,
+                skip,
+                take,
+                orderBy: { createdAt: 'desc' } as any
+            }),
+            prisma.task.count({ where })
+        ]);
+
+        res.json({
+            tasks,
+            pagination: {
+                total,
+                page: Number(page),
+                limit: Number(limit),
+                totalPages: Math.ceil(total / Number(limit))
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch tasks' });
+    }
+};
+
+export const updateTask = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { title, description, status, priority, completedAt } = req.body;
+
+        const task = await prisma.task.updateMany({
+            where: { id: id as string, userId: req.userId },
+            data: {
+                title,
+                description,
+                status: status as Status,
+                priority: priority as Priority,
+                completedAt: status === Status.DONE ? (completedAt || new Date()) : null
+            }
+        });
+
+        if (task.count === 0) return res.status(404).json({ error: 'Task not found' });
+
+        const updatedTask = await prisma.task.findUnique({ where: { id: id as string } });
+        res.json(updatedTask);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update task' });
+    }
+};
+
+export const deleteTask = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const result = await prisma.task.deleteMany({
+            where: { id: id as string, userId: req.userId }
+        });
+
+        if (result.count === 0) return res.status(404).json({ error: 'Task not found' });
+        res.json({ message: 'Task deleted' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete task' });
+    }
+};
