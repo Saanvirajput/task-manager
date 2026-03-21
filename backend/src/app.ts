@@ -18,7 +18,15 @@ const app = express();
 
 // Base Middleware
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: (origin, callback) => {
+        // Allow if it's from the configured FRONTEND_URL or any Railway subdomain
+        if (!origin || origin === process.env.FRONTEND_URL || origin.endsWith('.up.railway.app')) {
+            callback(null, true);
+        } else {
+            console.log('Blocked by CORS:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
