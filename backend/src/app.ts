@@ -109,15 +109,6 @@ app.get('/health', (_req: Request, res: Response) => {
     res.json({ status: 'OK' });
 });
 
-app.get('/health/debug', (req: Request, res: Response) => {
-    res.json({
-        frontend_url: process.env.FRONTEND_URL || 'NOT_SET',
-        node_env: process.env.NODE_ENV || 'development',
-        cors_origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-        request_origin: req.get('origin') || 'no-origin-header'
-    });
-});
-
 // 404 Handler
 app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: 'Not Found' });

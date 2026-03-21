@@ -285,17 +285,13 @@ sequenceDiagram
 ```
 
 
-## 🔑 Test Account
-- **Email**: `test@example.com`
-- **Password**: `password123`
+## 🛠️ Tech Stack & Structure
 
-## 🛡️ Security
-
-This project prioritizes the safety of your credentials and data:
-- **Environment Isolation**: All sensitive keys (Database URLs, Gemini API Keys, JWT Secrets) are managed exclusively through `.env` files and are excluded from version control.
-- **Git History Scrubbing**: A deep security audit was performed, and any accidentally committed credentials have been purged from the entire git history using `git filter-branch`.
-- **JWT Best Practices**: Authentication uses access/refresh token rotation with secure hashing.
-- **Data Privacy**: Uploaded PDFs are processed in-memory (buffer) and temporary files are immediately unlinked from the server after extraction.
+- **Frontend**: Next.js 14, Tailwind CSS, Recharts, Lucide Icons.
+- **Backend**: Node.js, Express, Prisma ORM, TypeScript, `node-cron`.
+- **Database**: Neon Cloud PostgreSQL.
+- **AI & Processing**: Google Gemini 1.5 Flash (for PDF extraction), Multer.
+- **Auth**: JWT (Access & Refresh token rotation), Bcrypt.
 
 ---
 Built with ✨ by Saanvi Rajput
