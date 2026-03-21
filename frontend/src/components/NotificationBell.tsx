@@ -22,8 +22,8 @@ function Toast({ message, type, onClose }: { message: string; type: string; onCl
 
     return (
         <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border text-sm font-medium animate-in slide-in-from-right duration-300 ${type === 'OVERDUE'
-                ? 'bg-red-50 border-red-200 text-red-800'
-                : 'bg-blue-50 border-blue-200 text-blue-800'
+            ? 'bg-red-50 border-red-200 text-red-800'
+            : 'bg-blue-50 border-blue-200 text-blue-800'
             }`}>
             {type === 'OVERDUE' ? <AlertTriangle size={16} /> : <Clock size={16} />}
             <span className="flex-1 max-w-[280px] truncate">{message}</span>
@@ -83,14 +83,34 @@ export default function NotificationBell() {
         return () => document.removeEventListener('mousedown', handleClick);
     }, []);
 
-    const markAsRead = async (id: string) => {
-        await api.patch(`/notifications/${id}/read`);
-        fetchNotifications();
+    const markAsRead = async (e: React.MouseEvent, id: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+            // Optimistic update
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+
+            await api.patch(`/notifications/${id}/read`);
+            fetchNotifications();
+        } catch (err) {
+            console.error(err);
+        }
     };
 
-    const markAllAsRead = async () => {
-        await api.patch('/notifications/read-all');
-        fetchNotifications();
+    const markAllAsRead = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+            // Optimistic update
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+            setUnreadCount(0);
+
+            await api.patch('/notifications/read-all');
+            fetchNotifications();
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     const removeToast = (id: string) => {
@@ -136,7 +156,7 @@ export default function NotificationBell() {
                         <div className="flex items-center justify-between p-4 border-b border-neutral-100">
                             <h3 className="font-bold text-neutral-800 text-sm">Notifications</h3>
                             {unreadCount > 0 && (
-                                <button onClick={markAllAsRead} className="flex items-center gap-1 text-xs font-medium text-brand-500 hover:text-brand-600">
+                                <button onClick={markAllAsRead} className="flex items-center gap-1 text-xs font-medium text-brand-500 hover:text-brand-600 z-10 relative">
                                     <CheckCheck size={14} /> Mark all read
                                 </button>
                             )}
@@ -154,7 +174,7 @@ export default function NotificationBell() {
                                         key={n.id}
                                         className={`flex items-start gap-3 p-3 border-b border-neutral-50 hover:bg-neutral-50/80 transition-colors cursor-pointer ${!n.isRead ? 'bg-blue-50/30' : ''
                                             }`}
-                                        onClick={() => !n.isRead && markAsRead(n.id)}
+                                        onClick={(e) => !n.isRead && markAsRead(e, n.id)}
                                     >
                                         <div className={`mt-1 p-1.5 rounded-full ${n.type === 'OVERDUE' ? 'bg-red-100 text-red-500' : 'bg-blue-100 text-blue-500'
                                             }`}>
