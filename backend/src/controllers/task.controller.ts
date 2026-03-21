@@ -6,21 +6,24 @@ import { Status, Priority } from '@prisma/client';
 export const createTask = async (req: AuthRequest, res: Response) => {
     try {
         console.log('Creating task:', req.body, 'for user:', req.userId);
-        const { title, description, status, priority } = req.body;
+        const { title, description, status, priority, cveId } = req.body;
         const task = await prisma.task.create({
             data: {
                 title,
                 description,
                 status: (status as Status) || Status.TODO,
                 priority: (priority as Priority) || Priority.MEDIUM,
+                cveId,
+                attachmentName: req.file?.originalname,
+                attachmentUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
                 userId: req.userId!
             }
         });
         console.log('Task created successfully:', task.id);
         res.status(201).json(task);
     } catch (error) {
-        console.error('Analytics Error:', error);
-        res.status(500).json({ error: 'Failed to fetch analytics' });
+        console.error('Error creating task:', error);
+        res.status(500).json({ error: 'Failed to create task' });
     }
 };
 
@@ -79,24 +82,30 @@ export const getTasks = async (req: AuthRequest, res: Response) => {
 export const updateTask = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { title, description, status, priority, completedAt } = req.body;
+        const { title, description, status, priority, cveId } = req.body;
 
-        const task = await prisma.task.updateMany({
-            where: { id: id as string, userId: req.userId },
+        await prisma.task.updateMany({
+            where: {
+                id: id as string,
+                userId: req.userId!
+            },
             data: {
                 title,
                 description,
                 status: status as Status,
                 priority: priority as Priority,
-                completedAt: status === Status.DONE ? (completedAt || new Date()) : null
+                cveId,
+                ...(req.file && {
+                    attachmentName: req.file.originalname,
+                    attachmentUrl: `/uploads/${req.file.filename}`
+                })
             }
         });
-
-        if (task.count === 0) return res.status(404).json({ error: 'Task not found' });
 
         const updatedTask = await prisma.task.findUnique({ where: { id: id as string } });
         res.json(updatedTask);
     } catch (error) {
+        console.error('Update Error:', error);
         res.status(500).json({ error: 'Failed to update task' });
     }
 };

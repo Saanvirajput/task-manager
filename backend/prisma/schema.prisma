@@ -26,6 +26,9 @@ model Task {
   description String?
   status      Status   @default(TODO)
   priority    Priority @default(MEDIUM)
+  cveId       String?
+  attachmentName String?
+  attachmentUrl  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   completedAt DateTime?

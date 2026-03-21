@@ -1,14 +1,34 @@
 import { Router } from 'express';
-import { createTask, getTasks, updateTask, deleteTask } from '../controllers/task.controller';
+import { getTasks, createTask, updateTask, deleteTask } from '../controllers/task.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
+import multer from 'multer';
+import path from 'path';
+
+const storage = multer.diskStorage({
+    destination: 'uploads/',
+    filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${file.originalname}`);
+    }
+});
+
+const upload = multer({
+    storage,
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'application/pdf') {
+            cb(null, true);
+        } else {
+            cb(new Error('Only PDF files are allowed'));
+        }
+    }
+});
 
 const router = Router();
 
 router.use(authMiddleware);
 
-router.post('/', createTask);
 router.get('/', getTasks);
-router.put('/:id', updateTask);
+router.post('/', upload.single('attachment'), createTask);
+router.put('/:id', upload.single('attachment'), updateTask);
 router.delete('/:id', deleteTask);
 
 export default router;

@@ -9,6 +9,8 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
     const [description, setDescription] = useState('');
     const [status, setStatus] = useState('TODO');
     const [priority, setPriority] = useState('MEDIUM');
+    const [cveId, setCveId] = useState('');
+    const [attachment, setAttachment] = useState<File | null>(null);
 
     useEffect(() => {
         if (task) {
@@ -16,21 +18,37 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
             setDescription(task.description || '');
             setStatus(task.status);
             setPriority(task.priority);
+            setCveId(task.cveId || '');
+            setAttachment(null);
         } else {
             setTitle('');
             setDescription('');
             setStatus('TODO');
             setPriority('MEDIUM');
+            setCveId('');
+            setAttachment(null);
         }
     }, [task]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('description', description);
+            formData.append('status', status);
+            formData.append('priority', priority);
+            if (cveId) formData.append('cveId', cveId);
+            if (attachment) formData.append('attachment', attachment);
+
             if (task) {
-                await api.put(`/tasks/${task.id}`, { title, description, status, priority });
+                await api.put(`/tasks/${task.id}`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
             } else {
-                await api.post('/tasks', { title, description, status, priority });
+                await api.post('/tasks', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
             }
             onSuccess();
             onClose();
@@ -60,6 +78,10 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
                         <label className="block text-sm font-semibold text-neutral-800 mb-1">Description</label>
                         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="w-full resize-none" placeholder="Add more details..." />
                     </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-neutral-800 mb-1">CVE ID / Task Reference</label>
+                        <input type="text" value={cveId} onChange={(e) => setCveId(e.target.value)} className="w-full" placeholder="e.g. CVE-2024-1234" />
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-semibold text-neutral-800 mb-1">Status</label>
@@ -77,6 +99,10 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
                                 <option value="HIGH">High</option>
                             </select>
                         </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-neutral-800 mb-1">PDF Attachment (Task info/CVE details)</label>
+                        <input type="file" onChange={(e) => setAttachment(e.target.files?.[0] || null)} accept=".pdf" className="w-full text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 cursor-pointer" />
                     </div>
                     <button type="submit" className="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-md shadow-lg transition-all mt-4">
                         {task ? 'Update' : 'Create'} Task

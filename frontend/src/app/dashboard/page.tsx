@@ -10,7 +10,7 @@ import {
 import {
     LayoutDashboard, ListTodo, CheckCircle2, Clock,
     Search, Plus, LogOut, ChevronLeft, ChevronRight,
-    Filter, Calendar, ArrowUpRight
+    Filter, Calendar, ArrowUpRight, FileText, Paperclip
 } from 'lucide-react';
 import TaskModal from '@/components/TaskModal';
 
@@ -172,9 +172,9 @@ export default function DashboardPage() {
                         <thead>
                             <tr className="bg-neutral-50 text-neutral-500 font-bold uppercase text-xs tracking-wider border-b border-neutral-200">
                                 <th className="px-6 py-4">Title</th>
+                                <th className="px-6 py-4">CVE / Ref</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4">Priority</th>
-                                <th className="px-6 py-4">Created</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
@@ -182,8 +182,30 @@ export default function DashboardPage() {
                             {tasks.map((task: any) => (
                                 <tr key={task.id} className="hover:bg-neutral-50/50 transition-colors">
                                     <td className="px-6 py-4">
-                                        <div className="font-bold text-neutral-800">{task.title}</div>
+                                        <div className="font-bold text-neutral-800 flex items-center gap-2">
+                                            {task.title}
+                                            {task.attachmentUrl && (
+                                                <a
+                                                    href={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000'}${task.attachmentUrl}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-brand-500 hover:text-brand-600"
+                                                    title={task.attachmentName}
+                                                >
+                                                    <Paperclip size={14} />
+                                                </a>
+                                            )}
+                                        </div>
                                         {task.description && <div className="text-neutral-400 text-xs truncate max-w-[200px]">{task.description}</div>}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {task.cveId ? (
+                                            <span className="flex items-center gap-1 text-xs font-bold text-neutral-600 bg-neutral-100 px-2 py-1 rounded w-fit">
+                                                <FileText size={12} /> {task.cveId}
+                                            </span>
+                                        ) : (
+                                            <span className="text-neutral-300 text-xs">-</span>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-bold ${task.status === 'DONE' ? 'bg-green-100 text-green-700' :
