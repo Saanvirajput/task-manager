@@ -17,10 +17,11 @@ export const register = async (req: Request, res: Response) => {
 
         res.status(201).json({ accessToken, refreshToken, user: { id: user.id, email: user.email, name: user.name } });
     } catch (error: any) {
+        console.error('Registration Error Details:', error);
         if (error.code === 'P2002') {
             return res.status(400).json({ error: 'Email already exists' });
         }
-        res.status(500).json({ error: 'Registration failed' });
+        res.status(500).json({ error: 'Registration failed: ' + (error.message || 'Unknown error') });
     }
 };
 
@@ -37,8 +38,9 @@ export const login = async (req: Request, res: Response) => {
         const refreshToken = generateRefreshToken(user.id);
 
         res.json({ accessToken, refreshToken, user: { id: user.id, email: user.email, name: user.name } });
-    } catch (error) {
-        res.status(500).json({ error: 'Login failed' });
+    } catch (error: any) {
+        console.error('Login Error Details:', error);
+        res.status(500).json({ error: 'Login failed: ' + (error.message || 'Unknown error') });
     }
 };
 
