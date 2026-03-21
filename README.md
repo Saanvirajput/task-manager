@@ -9,6 +9,11 @@
 
 A premium, full-stack task management platform designed for efficiency and data-driven insights. Built with a modern tech stack and integrated with **Neon Cloud PostgreSQL**, featuring AI-powered PDF extraction fueled by Google's Gemini LLM and an automated Node-Cron notification system.
 
+## 🚀 Live Deployment
+- **Frontend (Live Demo)**: [https://task-manager-saanvi.vercel.app](https://task-manager-saanvi.vercel.app) *(Update with your actual Vercel URL)*
+- **Backend API**: [https://task-manager-production-26ac.up.railway.app](https://task-manager-production-26ac.up.railway.app)
+- **Database**: Neon Cloud PostgreSQL (Serverless)
+
 ![Dashboard Preview](./docs/assets/dashboard.png)
 
 
