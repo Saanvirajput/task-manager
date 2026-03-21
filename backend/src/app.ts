@@ -21,6 +21,15 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+app.get('/', (req: Request, res: Response) => {
+    res.json({
+        message: 'Welcome to the Task Management System API',
+        status: 'Online',
+        version: '1.0.0',
+        documentation: 'https://github.com/Saanvirajput/task-manager'
+    });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
