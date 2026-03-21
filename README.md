@@ -200,4 +200,5 @@ npm run dev
 - **Auth**: JWT (Access & Refresh token rotation), Bcrypt.
 
 ---
-Built with ✨ for the Open Source Community
+---
+Built with ✨ by Saanvi Rajput
