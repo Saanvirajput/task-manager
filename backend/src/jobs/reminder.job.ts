@@ -52,7 +52,7 @@ export const startReminderJob = () => {
 
                 await prisma.notification.create({
                     data: {
-                        message: `${priorityEmoji} Overdue: "${task.title}" was due on ${task.dueDate!.toLocaleDateString()}!`,
+                        message: `${priorityEmoji} Overdue: "${task.title}" was due on ${(task as any).dueDate!.toLocaleDateString()}!`,
                         type: 'OVERDUE',
                         userId: task.userId,
                         taskId: task.id,
