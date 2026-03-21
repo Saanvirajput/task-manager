@@ -289,5 +289,13 @@ sequenceDiagram
 - **Email**: `test@example.com`
 - **Password**: `password123`
 
+## 🛡️ Security
+
+This project prioritizes the safety of your credentials and data:
+- **Environment Isolation**: All sensitive keys (Database URLs, Gemini API Keys, JWT Secrets) are managed exclusively through `.env` files and are excluded from version control.
+- **Git History Scrubbing**: A deep security audit was performed, and any accidentally committed credentials have been purged from the entire git history using `git filter-branch`.
+- **JWT Best Practices**: Authentication uses access/refresh token rotation with secure hashing.
+- **Data Privacy**: Uploaded PDFs are processed in-memory (buffer) and temporary files are immediately unlinked from the server after extraction.
+
 ---
 Built with ✨ by Saanvi Rajput
