@@ -196,7 +196,7 @@ export default function DashboardPage() {
                                             {task.title}
                                             {task.attachmentUrl && (
                                                 <a
-                                                    href={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000'}${task.attachmentUrl}`}
+                                                    href={`${(process.env.NEXT_PUBLIC_API_URL || '').replace('/api', '')}${task.attachmentUrl}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-brand-500 hover:text-brand-600"
@@ -236,8 +236,8 @@ export default function DashboardPage() {
                                     <td className="px-6 py-4">
                                         {task.dueDate ? (
                                             <span className={`text-xs font-medium ${new Date(task.dueDate) < new Date() && task.status !== 'DONE'
-                                                    ? 'text-red-600 font-bold'
-                                                    : 'text-neutral-500'
+                                                ? 'text-red-600 font-bold'
+                                                : 'text-neutral-500'
                                                 }`}>
                                                 {new Date(task.dueDate).toLocaleDateString()}
                                                 {new Date(task.dueDate) < new Date() && task.status !== 'DONE' && (
