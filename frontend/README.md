@@ -55,7 +55,7 @@ npm install
 ### 2. Environment Variables
 Create a `.env.local` file:
 ```env
-NEXT_PUBLIC_API_URL=https://your-backend-url.up.railway.app/api
+NEXT_PUBLIC_API_URL=https://task-manager-production-26ac.up.railway.app/api
 ```
 
 ### 3. Run Development

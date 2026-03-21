@@ -10,7 +10,7 @@
 A premium, full-stack task management platform designed for efficiency and data-driven insights. Built with a modern tech stack and integrated with **Neon Cloud PostgreSQL**, featuring AI-powered PDF extraction fueled by Google's Gemini LLM and an automated Node-Cron notification system.
 
 ## 🚀 Live Deployment
-- **Frontend (Live Demo)**: [https://task-manager-lovl.vercel.app](https://task-manager-lovl.vercel.app)
+- **Frontend (Live Demo)**: [https://task-manager-production-1e76.up.railway.app](https://task-manager-production-1e76.up.railway.app)
 - **Backend API**: [https://task-manager-production-26ac.up.railway.app](https://task-manager-production-26ac.up.railway.app)
 - **Database**: Neon Cloud PostgreSQL (Serverless)
 
@@ -145,7 +145,7 @@ While many task managers focus solely on manual list-making, **TaskFlow** stands
 
 ```text
 task-manager/
-├── frontend/                # Next.js 14 Application
+├── frontend/                    <a href="https://task-manager-production-1e76.up.railway.app" target="_blank">💻 Frontend App</a>
 │   ├── src/app/             # App Router pages (Dashboard, Login)
 │   ├── src/components/      # Reusable UI (Modals, NotificationBell)
 │   ├── src/lib/             # Axios API interceptors & Auth Context
