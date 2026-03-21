@@ -91,6 +91,7 @@ Create a `.env` file in the `backend/` directory:
 DATABASE_URL="your_neon_postgresql_url"
 JWT_ACCESS_SECRET="your_secret"
 JWT_REFRESH_SECRET="your_secret"
+GEMINI_API_KEY="your_gemini_api_key_here"
 ```
 
 ### 3. Database Sync & Seed

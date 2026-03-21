@@ -92,7 +92,7 @@ OUTPUT FORMAT (STRICT JSON ONLY):
             throw new Error(`Gemini API responded with status ${response.status}`);
         }
 
-        const data = await response.json();
+        const data: any = await response.json();
         const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!responseText) {
