@@ -35,7 +35,27 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: any) {
             const formData = new FormData();
             formData.append('attachment', file);
             const res = await api.post('/tasks/extract-pdf', formData);
-            setPreviewTasks(res.data.tasks);
+
+            // Map the schedule back to the tasks
+            const planTasks = res.data.tasks || [];
+            const schedule = res.data.schedule || [];
+
+            const tasksWithSchedule = planTasks.map((task: any) => {
+                // Find if this task is scheduled for a specific day
+                const scheduledDay = schedule.find((s: any) =>
+                    s.tasks.some((st: string) => st.toLowerCase() === task.title.toLowerCase())
+                );
+
+                if (scheduledDay) {
+                    return {
+                        ...task,
+                        description: `[Scheduled for Day ${scheduledDay.day}] ${task.description || ''}`.trim()
+                    };
+                }
+                return task;
+            });
+
+            setPreviewTasks(tasksWithSchedule);
             setStatus('PREVIEW');
         } catch (err) {
             console.error(err);
@@ -145,7 +165,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: any) {
                                         </div>
                                         <div className="flex items-center">
                                             <span className={`px-2 py-0.5 rounded text-[10px] font-black tracking-tighter uppercase ${task.priority === 'HIGH' ? 'bg-red-50 text-red-600' :
-                                                    task.priority === 'MEDIUM' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
+                                                task.priority === 'MEDIUM' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
                                                 }`}>
                                                 {task.priority}
                                             </span>

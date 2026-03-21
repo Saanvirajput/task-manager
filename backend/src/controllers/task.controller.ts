@@ -123,15 +123,12 @@ export const extractTasksFromPdf = async (req: AuthRequest, res: Response) => {
         const filePath = path.join(__dirname, '../../', req.file.path);
         const dataBuffer = fs.readFileSync(filePath);
 
-        const extractedTasks = await parsePdfTasks(dataBuffer);
+        const extractedPlan = await parsePdfTasks(dataBuffer);
 
         // Delete temporary file after extraction
         fs.unlinkSync(filePath);
 
-        res.json({
-            count: extractedTasks.length,
-            tasks: extractedTasks
-        });
+        res.json(extractedPlan);
     } catch (error) {
         console.error('Extraction Error:', error);
         res.status(500).json({ error: 'Failed to extract tasks from PDF' });

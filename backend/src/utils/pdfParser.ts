@@ -4,7 +4,17 @@ export interface ExtractedTask {
     priority: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
-export const parsePdfTasks = async (dataBuffer: Buffer): Promise<ExtractedTask[]> => {
+export interface ScheduleDay {
+    day: number;
+    tasks: string[];
+}
+
+export interface ExtractedPlan {
+    tasks: ExtractedTask[];
+    schedule: ScheduleDay[];
+}
+
+export const parsePdfTasks = async (dataBuffer: Buffer): Promise<ExtractedPlan> => {
     try {
         const apiKey = "REDACTED_BY_ANTIGRAVITY";
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
@@ -16,11 +26,40 @@ export const parsePdfTasks = async (dataBuffer: Buffer): Promise<ExtractedTask[]
                 {
                     parts: [
                         {
-                            text: `Extract all actionable tasks from this document. For each task, provide a concise 'title', a 'description' (if present), and a 'priority' level (strictly exactly one of: LOW, MEDIUM, HIGH). Return the response strictly as a JSON array of objects without any markdown formatting, backticks, or extra text.
-Example format:
-[
-  { "title": "Update dependencies", "description": "Upgrade React to v18", "priority": "MEDIUM" }
-]`
+                            text: `You are an intelligent task planning assistant.
+
+Your job is to analyze the given content (extracted from a PDF such as notes, syllabus, or project document) and generate a structured, actionable task plan.
+
+INSTRUCTIONS:
+1. Extract meaningful, actionable tasks from the content.
+2. Break large concepts into smaller, executable tasks.
+3. Assign each task:
+   * title (short and clear)
+   * description (optional but helpful)
+   * priority (LOW, MEDIUM, HIGH based on importance/urgency)
+4. Do NOT generate vague tasks. Be specific and practical.
+5. Create a daily execution plan:
+   * Distribute tasks over days logically
+   * Keep workload balanced
+   * Assume user can complete 3–5 tasks per day
+6. Keep tasks realistic for a student or developer.
+
+OUTPUT FORMAT (STRICT JSON ONLY):
+{
+  "tasks": [
+    {
+      "title": "string",
+      "description": "string",
+      "priority": "LOW | MEDIUM | HIGH"
+    }
+  ],
+  "schedule": [
+    {
+      "day": 1,
+      "tasks": ["task title 1", "task title 2"]
+    }
+  ]
+}`
                         },
                         {
                             inlineData: {
@@ -58,17 +97,21 @@ Example format:
         }
 
         // Clean up potential markdown formatting block if present
-        const jsonString = responseText.replace(/\`\`\`json/gi, '').replace(/\`\`\`/g, '').trim();
-        const tasks: ExtractedTask[] = JSON.parse(jsonString);
+        const jsonString = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const plan = JSON.parse(jsonString) as ExtractedPlan;
+
+        if (!plan.tasks) plan.tasks = [];
+        if (!plan.schedule) plan.schedule = [];
 
         // Sanitize priorities
-        return tasks.map(t => ({
+        plan.tasks = plan.tasks.map(t => ({
             ...t,
-            priority: ['LOW', 'MEDIUM', 'HIGH'].includes(t.priority?.toUpperCase())
+            priority: ['LOW', 'MEDIUM', 'HIGH'].includes(t.priority?.toUpperCase() || '')
                 ? (t.priority.toUpperCase() as 'LOW' | 'MEDIUM' | 'HIGH')
                 : 'MEDIUM'
         }));
 
+        return plan;
     } catch (error) {
         console.error('Gemini Parsing Error:', error);
         throw new Error('Failed to parse PDF tasks with Gemini API');
