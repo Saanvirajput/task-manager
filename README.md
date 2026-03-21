@@ -1,6 +1,16 @@
 # 🛰️ TaskFlow: Data-Driven Task Management System
 
-A premium, full-stack task management platform designed for efficiency and data-driven insights. Built with a modern tech stack and integrated with **Neon Cloud PostgreSQL**.
+![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
+![Node.js](https://img.shields.io/badge/Node.js-20-43853D?style=for-the-badge&logo=node.js)
+![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=for-the-badge&logo=prisma)
+![Tailwind](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+
+A premium, full-stack task management platform designed for efficiency and data-driven insights. Built with a modern tech stack and integrated with **Neon Cloud PostgreSQL**, featuring AI-powered PDF extraction fueled by Google's Gemini LLM and an automated Node-Cron notification system.
+
+![Dashboard Preview](./docs/assets/dashboard.png)
+
 
 ## 🔄 System Architecture & AI Workflow
 
@@ -69,12 +79,31 @@ graph TD
 - **Priority Management**: Focus on what matters most using High/Medium/Low priority tagging.
 - **Goal Visualization**: Monitor your completion rates to maintain momentum on long-term projects.
 
-## 🛠️ Tech Stack
+## 🛠️ Tech Stack & Structure
 
 - **Frontend**: Next.js 14, Tailwind CSS, Recharts, Lucide Icons.
-- **Backend**: Node.js, Express, Prisma ORM, TypeScript.
+- **Backend**: Node.js, Express, Prisma ORM, TypeScript, `node-cron`.
 - **Database**: Neon Cloud PostgreSQL.
-- **Auth**: JWT, Bcrypt.
+- **AI & Processing**: Google Gemini 1.5 Flash (for PDF extraction), Multer.
+- **Auth**: JWT (Access & Refresh token rotation), Bcrypt.
+
+### 📂 Directory Structure
+
+```text
+task-manager/
+├── frontend/                # Next.js 14 Application
+│   ├── src/app/             # App Router pages (Dashboard, Login)
+│   ├── src/components/      # Reusable UI (Modals, NotificationBell)
+│   ├── src/lib/             # Axios API interceptors & Auth Context
+│   └── src/styles/          # Tailwind configuration & global CSS
+├── backend/                 # Node.js Express Application
+│   ├── prisma/              # Schema definitions & migrations
+│   ├── src/controllers/     # Route logic (Auth, Tasks, Notifications)
+│   ├── src/jobs/            # Background cron jobs
+│   ├── src/middleware/      # JWT verification & Error handlers
+│   └── src/utils/           # AI PDF parsing utility
+└── LICENSE
+```
 
 ## 🚀 Quick Start
 
