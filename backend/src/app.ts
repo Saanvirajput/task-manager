@@ -27,6 +27,12 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/', (req: Request, res: Response) => {
+    // If a frontend URL is configured, redirect to it
+    if (process.env.FRONTEND_URL) {
+        return res.redirect(process.env.FRONTEND_URL);
+    }
+
+    // Fallback: Professional API Landing Page
     res.send(`
         <!DOCTYPE html>
         <html lang="en">
@@ -65,7 +71,7 @@ app.get('/', (req: Request, res: Response) => {
                 </ul>
 
                 <div class="links">
-                    <a href="https://task-manager-lovl.vercel.app" target="_blank">💻 Frontend App</a>
+                    <a href="${process.env.FRONTEND_URL || '#'}" target="_blank">💻 Launch Frontend App</a>
                     <a href="https://github.com/Saanvirajput/task-manager" target="_blank">🐙 GitHub Repo</a>
                 </div>
             </div>
