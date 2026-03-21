@@ -27,6 +27,7 @@ export default function DashboardPage() {
     const [totalPages, setTotalPages] = useState(1);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
+    const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
 
     const fetchDashboardData = useCallback(async () => {
         try {
@@ -47,9 +48,10 @@ export default function DashboardPage() {
         if (user) fetchDashboardData();
     }, [user, authLoading, fetchDashboardData, router]);
 
-    const handleDelete = async (id: string) => {
-        if (confirm('Are you sure you want to delete this task?')) {
-            await api.delete(`/tasks/${id}`);
+    const handleDelete = async () => {
+        if (deletingTaskId) {
+            await api.delete(`/tasks/${deletingTaskId}`);
+            setDeletingTaskId(null);
             fetchDashboardData();
         }
     };
@@ -185,16 +187,16 @@ export default function DashboardPage() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-bold ${task.status === 'DONE' ? 'bg-green-100 text-green-700' :
-                                                task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                                                    'bg-orange-100 text-orange-700'
+                                            task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                                                'bg-orange-100 text-orange-700'
                                             }`}>
                                             {task.status.replace('_', ' ')}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-bold ${task.priority === 'HIGH' ? 'bg-red-100 text-red-700' :
-                                                task.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
-                                                    'bg-neutral-100 text-neutral-700'
+                                            task.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-neutral-100 text-neutral-700'
                                             }`}>
                                             {task.priority}
                                         </span>
@@ -204,7 +206,7 @@ export default function DashboardPage() {
                                     </td>
                                     <td className="px-6 py-4 text-right space-x-2">
                                         <button onClick={() => { setEditingTask(task); setIsModalOpen(true); }} className="text-brand-500 font-bold text-sm hover:underline">Edit</button>
-                                        <button onClick={() => handleDelete(task.id)} className="text-red-500 font-bold text-sm hover:underline">Delete</button>
+                                        <button onClick={() => setDeletingTaskId(task.id)} className="text-red-500 font-bold text-sm hover:underline">Delete</button>
                                     </td>
                                 </tr>
                             ))}
@@ -237,6 +239,20 @@ export default function DashboardPage() {
                 onSuccess={fetchDashboardData}
                 task={editingTask}
             />
+
+            {/* Custom Delete Confirmation Modal */}
+            {deletingTaskId && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-neutral-200 animate-in fade-in zoom-in duration-200">
+                        <h2 className="text-lg font-bold text-neutral-800 mb-2">Delete Task?</h2>
+                        <p className="text-neutral-500 text-sm mb-6">Are you sure you want to remove this task? This action cannot be undone.</p>
+                        <div className="flex gap-3">
+                            <button onClick={() => setDeletingTaskId(null)} className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 font-bold rounded-lg transition-colors">Cancel</button>
+                            <button onClick={handleDelete} className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow-lg transition-all">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
