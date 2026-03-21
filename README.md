@@ -191,9 +191,6 @@ In the root directory:
 npm run dev
 ```
 
-## 🔐 Authentication Flow
-
-```mermaid
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 14, Tailwind CSS, Recharts, Lucide Icons.
@@ -202,6 +199,5 @@ npm run dev
 - **AI & Processing**: Google Gemini 1.5 Flash (for PDF extraction), Multer.
 - **Auth**: JWT (Access & Refresh token rotation), Bcrypt.
 
----
 ---
 Built with ✨ for the Open Source Community
