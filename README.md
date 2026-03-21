@@ -13,6 +13,13 @@ A premium, full-stack task management platform designed for efficiency and data-
 - **☁️ Cloud Integrated**: Pre-configured for serverless Neon PostgreSQL.
 - **🎭 Modern UI**: Clean, ClickUp-inspired interface with responsive design and subtle micro-animations.
 
+## 🎯 Use Cases
+
+- **Personal Task Tracking**: Stay on top of daily to-dos with a clean, distraction-free interface.
+- **Productivity Analysis**: Use the built-in charts to visualize your work patterns and improve efficiency.
+- **Priority Management**: Focus on what matters most using High/Medium/Low priority tagging.
+- **Goal Visualization**: Monitor your completion rates to maintain momentum on long-term projects.
+
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 14, Tailwind CSS, Recharts, Lucide Icons.
