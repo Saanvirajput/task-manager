@@ -1,0 +1,10 @@
+Task: Fix security vulnerability in auth module
+Description: Update JWT library to version 5.0 and re-test refresh flows.
+Priority: High
+
+Task: Research new CVE-2024-54321
+Description: Check if our system is affected by this new overflow bug.
+Priority: Medium
+
+• Update frontend dependencies (Low)
+• Deploy final polish to production (High)

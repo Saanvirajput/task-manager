@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getTasks, createTask, updateTask, deleteTask } from '../controllers/task.controller';
+import { getTasks, createTask, updateTask, deleteTask, extractTasksFromPdf } from '../controllers/task.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import multer from 'multer';
 import path from 'path';
@@ -28,6 +28,7 @@ router.use(authMiddleware);
 
 router.get('/', getTasks);
 router.post('/', upload.single('attachment'), createTask);
+router.post('/extract-pdf', upload.single('attachment'), extractTasksFromPdf);
 router.put('/:id', upload.single('attachment'), updateTask);
 router.delete('/:id', deleteTask);
 

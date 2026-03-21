@@ -1,7 +1,11 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
-import prisma from '../utils/prisma';
-import { Status, Priority } from '@prisma/client';
+import { PrismaClient, Status, Priority } from '@prisma/client';
+import fs from 'fs';
+import path from 'path';
+import { parsePdfTasks } from '../utils/pdfParser';
+
+const prisma = new PrismaClient();
 
 export const createTask = async (req: AuthRequest, res: Response) => {
     try {
@@ -107,6 +111,30 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
     } catch (error) {
         console.error('Update Error:', error);
         res.status(500).json({ error: 'Failed to update task' });
+    }
+};
+
+export const extractTasksFromPdf = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No PDF file provided' });
+        }
+
+        const filePath = path.join(__dirname, '../../', req.file.path);
+        const dataBuffer = fs.readFileSync(filePath);
+
+        const extractedTasks = await parsePdfTasks(dataBuffer);
+
+        // Delete temporary file after extraction
+        fs.unlinkSync(filePath);
+
+        res.json({
+            count: extractedTasks.length,
+            tasks: extractedTasks
+        });
+    } catch (error) {
+        console.error('Extraction Error:', error);
+        res.status(500).json({ error: 'Failed to extract tasks from PDF' });
     }
 };
 

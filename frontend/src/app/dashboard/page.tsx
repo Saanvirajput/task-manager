@@ -13,6 +13,7 @@ import {
     Filter, Calendar, ArrowUpRight, FileText, Paperclip
 } from 'lucide-react';
 import TaskModal from '@/components/TaskModal';
+import ImportModal from '@/components/ImportModal';
 
 export default function DashboardPage() {
     const { user, logout, loading: authLoading } = useAuth();
@@ -26,6 +27,7 @@ export default function DashboardPage() {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
     const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
 
@@ -84,9 +86,14 @@ export default function DashboardPage() {
                         <h1 className="text-2xl font-bold font-neutral-800">Welcome, {user.name}</h1>
                         <p className="text-neutral-500 font-medium text-sm">Here's what's happening today.</p>
                     </div>
-                    <button onClick={() => { setEditingTask(null); setIsModalOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-brand-500 text-white font-bold rounded-lg shadow-lg hover:bg-brand-600 transition-all">
-                        <Plus size={20} /> New Task
-                    </button>
+                    <div className="flex gap-3">
+                        <button onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white font-bold rounded-lg shadow-lg hover:bg-black transition-all">
+                            <FileText size={20} /> Import PDF
+                        </button>
+                        <button onClick={() => { setEditingTask(null); setIsModalOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-brand-500 text-white font-bold rounded-lg shadow-lg hover:bg-brand-600 transition-all">
+                            <Plus size={20} /> New Task
+                        </button>
+                    </div>
                 </header>
 
                 {/* Summary Cards */}
@@ -260,6 +267,12 @@ export default function DashboardPage() {
                 onClose={() => setIsModalOpen(false)}
                 onSuccess={fetchDashboardData}
                 task={editingTask}
+            />
+
+            <ImportModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onSuccess={fetchDashboardData}
             />
 
             {/* Custom Delete Confirmation Modal */}
