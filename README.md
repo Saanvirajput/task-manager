@@ -65,6 +65,8 @@ graph TD
 
 ## ✨ Features
 
+- **🤖 Smart AI PDF Extraction**: Upload any syllabus, codebase requirement, or project PDF, and our integrated Google Gemini AI engine will instantly read, parse, and suggest a structured, pre-scheduled list of actionable tasks directly into your workflow.
+- **🔔 Background Notifications**: A powerful `node-cron` background job continuously monitors task deadlines and automatically pushes visual Toast alerts and bell-badge increments for upcoming and overdue tasks.
 - **🚀 Performance Dashboard**: Real-time analytics on task completion rates and creation trends.
 - **🛡️ Secure Authentication**: JWT-based auth with Access & Refresh token rotation.
 - **📊 Real-time Analytics**: Interactive charts powered by Recharts showing productivity trends.
