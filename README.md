@@ -176,6 +176,32 @@ flowchart LR
     J --> K([🖥️ UI Re-renders]):::action
 ```
 
+## 🔔 Notification & Reminder Flow
+
+```mermaid
+sequenceDiagram
+    participant Cron as ⏳ node-cron Job (Every 1m)
+    participant DB as 🗄️ Neon PostgreSQL
+    participant BE as ⚙️ Express Backend
+    participant FE as 💻 NotificationBell UI
+
+    Cron->>DB: Query tasks (dueDate/reminderTime <= now & flag=false)
+    DB-->>Cron: Return overdue/upcoming tasks
+    
+    loop For each task
+        Cron->>DB: Create Notification (type: REMINDER/OVERDUE)
+        Cron->>DB: Update Task (isNotified=true / isOverdueNotified=true)
+    end
+    
+    Note over FE,BE: Client-side Polling (Every 30s)
+    FE->>BE: GET /api/notifications
+    BE->>DB: Fetch user's notifications
+    DB-->>BE: Return active unread alerts
+    BE-->>FE: 200 OK (Unread Count + Messages)
+    FE-->>FE: Trigger Toast Alerts & Update Bell Badge
+```
+
+
 ## 🔑 Test Account
 - **Email**: `test@example.com`
 - **Password**: `password123`
