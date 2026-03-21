@@ -68,6 +68,27 @@ graph TD
     State -->|12. Real-time Updates| Dashboard
 ```
 
+## 🗺️ End-to-End User Journey
+
+```mermaid
+journey
+    title A Day in TaskFlow
+    section Onboarding
+      Sign Up: 5: User
+      Login: 5: User
+    section AI Task Creation
+      Upload PDF Syllabus: 4: User, AI Engine
+      AI Parsing Content: 5: AI Engine
+      Review & Edit Suggested Tasks: 4: User
+    section Management
+      Organize Dashboard: 5: User
+      Check Completion Charts: 4: User
+    section Success
+      Get Overdue Notification: 3: Backend
+      Complete High-Priority Task: 5: User
+      Observe Productivity Growth: 5: User
+```
+
 ## ✨ Features
 
 - **🤖 Smart AI PDF Extraction**: Upload any syllabus, codebase requirement, or project PDF, and our integrated Google Gemini AI engine will instantly read, parse, and suggest a structured, pre-scheduled list of actionable tasks directly into your workflow.
