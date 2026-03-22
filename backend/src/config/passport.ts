@@ -5,8 +5,8 @@ import prisma from '../utils/prisma';
 passport.use(
     new GoogleStrategy(
         {
-            clientID: process.env.GOOGLE_CLIENT_ID || 'dummy_client_id_for_dev_only',
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'dummy_client_secret_for_dev_only',
+            clientID: process.env.GOOGLE_CLIENT_ID || '',
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
             callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/auth/google/callback',
         },
         async (accessToken, refreshToken, profile, done) => {
