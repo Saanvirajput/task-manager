@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '@/lib/api';
-import { Bell, Check, CheckCheck, Clock, AlertTriangle, X } from 'lucide-react';
+import { Bell, Check, CheckCheck, Clock, AlertTriangle, X, Trash2 } from 'lucide-react';
 
 interface Notification {
     id: string;
@@ -39,6 +39,7 @@ export default function NotificationBell() {
     const [unreadCount, setUnreadCount] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
     const [toasts, setToasts] = useState<{ id: string; message: string; type: string }[]>([]);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const prevUnreadRef = useRef(0);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -113,6 +114,43 @@ export default function NotificationBell() {
         }
     };
 
+    const deleteSelected = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (selectedIds.length === 0) return;
+
+        try {
+            // Optimistic update
+            setNotifications(prev => prev.filter(n => !selectedIds.includes(n.id)));
+            const deletedUnreadCount = notifications.filter(n => selectedIds.includes(n.id) && !n.isRead).length;
+            setUnreadCount(prev => Math.max(0, prev - deletedUnreadCount));
+
+            await api.delete('/notifications', { data: { ids: selectedIds } });
+            setSelectedIds([]);
+            fetchNotifications();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const toggleSelect = (e: React.MouseEvent, id: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const toggleSelectAll = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (selectedIds.length === notifications.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(notifications.map(n => n.id));
+        }
+    };
+
     const removeToast = (id: string) => {
         setToasts(prev => prev.filter(t => t.id !== id));
     };
@@ -153,13 +191,32 @@ export default function NotificationBell() {
                 {/* Dropdown */}
                 {isOpen && (
                     <div className="absolute right-0 top-12 w-96 bg-white rounded-xl shadow-2xl border border-neutral-200 z-50 overflow-hidden">
-                        <div className="flex items-center justify-between p-4 border-b border-neutral-100">
-                            <h3 className="font-bold text-neutral-800 text-sm">Notifications</h3>
-                            {unreadCount > 0 && (
-                                <button onClick={markAllAsRead} className="flex items-center gap-1 text-xs font-medium text-brand-500 hover:text-brand-600 z-10 relative">
-                                    <CheckCheck size={14} /> Mark all read
-                                </button>
-                            )}
+                        <div className="flex items-center justify-between p-4 border-b border-neutral-100 bg-neutral-50/50">
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-bold text-neutral-800 text-sm">Notifications</h3>
+                                {notifications.length > 0 && (
+                                    <button
+                                        onClick={toggleSelectAll}
+                                        className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 hover:text-neutral-600 transition-colors"
+                                    >
+                                        {selectedIds.length === notifications.length ? 'Unselect All' : 'Select All'}
+                                    </button>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {selectedIds.length > 0 ? (
+                                    <button
+                                        onClick={deleteSelected}
+                                        className="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-600 animate-in fade-in slide-in-from-right-2 duration-200"
+                                    >
+                                        <Trash2 size={14} /> Delete ({selectedIds.length})
+                                    </button>
+                                ) : unreadCount > 0 ? (
+                                    <button onClick={markAllAsRead} className="flex items-center gap-1 text-xs font-medium text-brand-500 hover:text-brand-600">
+                                        <CheckCheck size={14} /> Mark all read
+                                    </button>
+                                ) : null}
+                            </div>
                         </div>
 
                         <div className="max-h-80 overflow-y-auto">
@@ -172,11 +229,20 @@ export default function NotificationBell() {
                                 notifications.map(n => (
                                     <div
                                         key={n.id}
-                                        className={`flex items-start gap-3 p-3 border-b border-neutral-50 hover:bg-neutral-50/80 transition-colors cursor-pointer ${!n.isRead ? 'bg-blue-50/30' : ''
-                                            }`}
+                                        className={`flex items-start gap-3 p-3 border-b border-neutral-50 hover:bg-neutral-50/80 transition-colors cursor-pointer group ${!n.isRead ? 'bg-blue-50/30' : ''
+                                            } ${selectedIds.includes(n.id) ? 'bg-brand-50/50' : ''}`}
                                         onClick={(e) => !n.isRead && markAsRead(e, n.id)}
                                     >
-                                        <div className={`mt-1 p-1.5 rounded-full ${n.type === 'OVERDUE' ? 'bg-red-100 text-red-500' : 'bg-blue-100 text-blue-500'
+                                        <div
+                                            className={`mt-1 h-5 w-5 rounded border flex items-center justify-center transition-all shrink-0 ${selectedIds.includes(n.id)
+                                                ? 'bg-brand-500 border-brand-500 text-white'
+                                                : 'border-neutral-300 bg-white group-hover:border-brand-400'
+                                                }`}
+                                            onClick={(e) => toggleSelect(e, n.id)}
+                                        >
+                                            {selectedIds.includes(n.id) && <Check size={12} strokeWidth={4} />}
+                                        </div>
+                                        <div className={`mt-1 p-1.5 rounded-full shrink-0 ${n.type === 'OVERDUE' ? 'bg-red-100 text-red-500' : 'bg-blue-100 text-blue-500'
                                             }`}>
                                             {n.type === 'OVERDUE' ? <AlertTriangle size={14} /> : <Clock size={14} />}
                                         </div>
@@ -186,7 +252,7 @@ export default function NotificationBell() {
                                             </p>
                                             <p className="text-xs text-neutral-400 mt-0.5">{formatTime(n.createdAt)}</p>
                                         </div>
-                                        {!n.isRead && (
+                                        {!n.isRead && !selectedIds.includes(n.id) && (
                                             <div className="w-2 h-2 rounded-full bg-brand-500 mt-2 shrink-0" />
                                         )}
                                     </div>

@@ -10,7 +10,7 @@ import {
 import {
     LayoutDashboard, ListTodo, CheckCircle2, Clock,
     Search, Plus, LogOut, ChevronLeft, ChevronRight,
-    Filter, Calendar, ArrowUpRight, FileText, Paperclip
+    Filter, Calendar, ArrowUpRight, FileText, Paperclip, Check
 } from 'lucide-react';
 import TaskModal from '@/components/TaskModal';
 import ImportModal from '@/components/ImportModal';
@@ -56,6 +56,29 @@ export default function DashboardPage() {
             await api.delete(`/tasks/${deletingTaskId}`);
             setDeletingTaskId(null);
             fetchDashboardData();
+        }
+    };
+
+    const toggleTaskStatus = async (task: any) => {
+        const newStatus = task.status === 'DONE' ? 'TODO' : 'DONE';
+
+        // Optimistic update
+        setTasks((prev: any) => prev.map((t: any) =>
+            t.id === task.id ? { ...t, status: newStatus } : t
+        ));
+
+        try {
+            await api.put(`/tasks/${task.id}`, {
+                ...task,
+                status: newStatus
+            });
+            fetchDashboardData();
+        } catch (error) {
+            console.error('Failed to update task status', error);
+            // Revert on error
+            setTasks((prev: any) => prev.map((t: any) =>
+                t.id === task.id ? { ...t, status: task.status } : t
+            ));
         }
     };
 
@@ -180,6 +203,7 @@ export default function DashboardPage() {
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-neutral-50 text-neutral-500 font-bold uppercase text-xs tracking-wider border-b border-neutral-200">
+                                <th className="px-6 py-4 w-12 text-center">Done</th>
                                 <th className="px-6 py-4">Title</th>
                                 <th className="px-6 py-4">CVE / Ref</th>
                                 <th className="px-6 py-4">Status</th>
@@ -191,6 +215,18 @@ export default function DashboardPage() {
                         <tbody className="divide-y divide-neutral-100">
                             {tasks.map((task: any) => (
                                 <tr key={task.id} className="hover:bg-neutral-50/50 transition-colors">
+                                    <td className="px-6 py-4 text-center">
+                                        <button
+                                            onClick={() => toggleTaskStatus(task)}
+                                            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mx-auto transition-all ${task.status === 'DONE'
+                                                ? 'bg-green-500 border-green-500 text-white shadow-sm'
+                                                : 'border-neutral-300 hover:border-brand-500 bg-white hover:bg-neutral-50'
+                                                }`}
+                                            title={task.status === 'DONE' ? 'Mark as Todo' : 'Mark as Done'}
+                                        >
+                                            {task.status === 'DONE' && <Check size={14} strokeWidth={4} />}
+                                        </button>
+                                    </td>
                                     <td className="px-6 py-4">
                                         <div className="font-bold text-neutral-800 flex items-center gap-2">
                                             {task.title}
