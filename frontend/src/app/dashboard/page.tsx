@@ -15,6 +15,7 @@ import {
 import TaskModal from '@/components/TaskModal';
 import ImportModal from '@/components/ImportModal';
 import NotificationBell from '@/components/NotificationBell';
+import confetti from 'canvas-confetti';
 
 export default function DashboardPage() {
     const { user, logout, loading: authLoading } = useAuth();
@@ -68,6 +69,15 @@ export default function DashboardPage() {
         ));
 
         try {
+            if (newStatus === 'DONE') {
+                confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#7b68ee', '#22c55e', '#3b82f6', '#f59e0b']
+                });
+            }
+
             await api.put(`/tasks/${task.id}`, {
                 ...task,
                 status: newStatus
@@ -228,21 +238,27 @@ export default function DashboardPage() {
                                         </button>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="font-bold text-neutral-800 flex items-center gap-2">
+                                        <div className={`font-bold transition-all duration-500 flex items-center gap-2 ${task.status === 'DONE' ? 'text-neutral-400 line-through' : 'text-neutral-800'
+                                            }`}>
                                             {task.title}
                                             {task.attachmentUrl && (
                                                 <a
                                                     href={`${(process.env.NEXT_PUBLIC_API_URL || '').replace('/api', '')}${task.attachmentUrl}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-brand-500 hover:text-brand-600"
+                                                    className={`hover:text-brand-600 transition-colors ${task.status === 'DONE' ? 'text-neutral-300' : 'text-brand-500'}`}
                                                     title={task.attachmentName}
                                                 >
                                                     <Paperclip size={14} />
                                                 </a>
                                             )}
                                         </div>
-                                        {task.description && <div className="text-neutral-400 text-xs truncate max-w-[200px]">{task.description}</div>}
+                                        {task.description && (
+                                            <div className={`text-xs truncate max-w-[200px] transition-all duration-500 ${task.status === 'DONE' ? 'text-neutral-300 line-through' : 'text-neutral-400'
+                                                }`}>
+                                                {task.description}
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4">
                                         {task.cveId ? (
