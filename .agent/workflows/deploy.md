@@ -18,7 +18,7 @@ TaskFlow is optimized for deployment on **Railway.app**. Follow these steps for 
 - `FRONTEND_URL`: URL of your deployed frontend.
 - `GEMINI_API_KEY`: Your production API key.
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: From Google Cloud Console.
-- `GOOGLE_CALLBACK_URL`: `https://your-backend.up.railway.app/auth/google/callback`
+- `GOOGLE_CALLBACK_URL`: `https://your-backend.up.railway.app/api/auth/google/callback`
 
 #### Frontend (Production)
 - `NEXT_PUBLIC_API_URL`: URL of your deployed backend.
