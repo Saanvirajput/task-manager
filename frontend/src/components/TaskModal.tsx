@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { X, Plus, Trash2, CheckCircle2, Circle } from 'lucide-react';
 
-export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
+export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceId }: any) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [status, setStatus] = useState('TODO');
@@ -58,7 +58,8 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
                 await api.post('/tasks', {
                     title: newSubTaskTitle,
                     parentId: task.id,
-                    status: 'TODO'
+                    status: 'TODO',
+                    workspaceId: workspaceId || undefined
                 });
                 setNewSubTaskTitle('');
                 fetchSubTasks(task.id);
@@ -98,6 +99,7 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
             if (dueDate) formData.append('dueDate', new Date(dueDate).toISOString());
             if (reminderTime) formData.append('reminderTime', new Date(reminderTime).toISOString());
             if (attachment) formData.append('attachment', attachment);
+            if (workspaceId && !task) formData.append('workspaceId', workspaceId);
 
             if (task) {
                 await api.put(`/tasks/${task.id}`, formData, {

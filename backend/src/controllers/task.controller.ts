@@ -10,7 +10,21 @@ const prisma = new PrismaClient();
 export const createTask = async (req: AuthRequest, res: Response) => {
     try {
         console.log('Creating task:', req.body, 'for user:', req.userId);
-        const { title, description, status, priority, cveId, dueDate, reminderTime, parentId } = req.body;
+        const { title, description, status, priority, cveId, dueDate, reminderTime, parentId, workspaceId } = req.body;
+
+        if (workspaceId) {
+            const membership = await (prisma as any).workspaceMember.findUnique({
+                where: {
+                    workspaceId_userId: {
+                        workspaceId,
+                        userId: req.userId!
+                    }
+                }
+            });
+            if (!membership || membership.role === 'VIEWER') {
+                return res.status(403).json({ error: 'Permission denied in this workspace' });
+            }
+        }
 
         // Auto-set reminderTime to 1 hour before dueDate if not provided
         let computedReminderTime = reminderTime ? new Date(reminderTime) : undefined;
@@ -30,7 +44,8 @@ export const createTask = async (req: AuthRequest, res: Response) => {
             attachmentName: req.file?.originalname,
             attachmentUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
             userId: req.userId!,
-            parentId: parentId || null
+            parentId: parentId || null,
+            workspaceId: workspaceId || null
         };
 
         const task = await prisma.task.create({
@@ -50,10 +65,26 @@ export const getTasks = async (req: AuthRequest, res: Response) => {
         const skip = (Number(page) - 1) * Number(limit);
         const take = Number(limit);
 
+        const workspaceId = req.query.workspaceId as string;
+
         const where: any = {
-            userId: req.userId,
+            userId: !workspaceId ? req.userId : undefined,
+            workspaceId: workspaceId || null,
             parentId: req.query.parentId === 'any' ? undefined : (req.query.parentId || null)
         };
+
+        if (workspaceId) {
+            const membership = await (prisma as any).workspaceMember.findUnique({
+                where: {
+                    workspaceId_userId: {
+                        workspaceId,
+                        userId: req.userId!
+                    }
+                }
+            });
+            if (!membership) return res.status(403).json({ error: 'Access denied' });
+            delete where.userId; // Allow all workspace tasks
+        }
 
         const status = req.query.status as string;
         const priority = req.query.priority as string;
@@ -139,11 +170,29 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
             updateData.isOverdueNotified = true;
         }
 
-        await prisma.task.updateMany({
-            where: {
-                id: id as string,
-                userId: req.userId!
-            },
+        const taskToUpdate: any = await prisma.task.findUnique({ where: { id: id as string } });
+        if (!taskToUpdate) return res.status(404).json({ error: 'Task not found' });
+
+        // Permission check
+        if (taskToUpdate.userId !== req.userId) {
+            if (!taskToUpdate.workspaceId) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+            const membership = await (prisma as any).workspaceMember.findUnique({
+                where: {
+                    workspaceId_userId: {
+                        workspaceId: taskToUpdate.workspaceId,
+                        userId: req.userId!
+                    }
+                }
+            });
+            if (!membership || membership.role === 'VIEWER') {
+                return res.status(403).json({ error: 'Permission denied in this workspace' });
+            }
+        }
+
+        await prisma.task.update({
+            where: { id: id as string },
             data: updateData
         });
 
@@ -179,11 +228,34 @@ export const extractTasksFromPdf = async (req: AuthRequest, res: Response) => {
 export const deleteTask = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const result = await prisma.task.deleteMany({
-            where: { id: id as string, userId: req.userId }
-        });
+        const taskToDelete: any = await prisma.task.findUnique({ where: { id: id as string } });
+        if (!taskToDelete) return res.status(404).json({ error: 'Task not found' });
 
-        if (result.count === 0) return res.status(404).json({ error: 'Task not found' });
+        // Permission check
+        if (taskToDelete.userId !== req.userId) {
+            if (!taskToDelete.workspaceId) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+            const membership = await (prisma as any).workspaceMember.findUnique({
+                where: {
+                    workspaceId_userId: {
+                        workspaceId: taskToDelete.workspaceId,
+                        userId: req.userId!
+                    }
+                }
+            });
+            if (!membership || membership.role === 'VIEWER' || membership.role === 'MEMBER') {
+                // Only ADMIN or Owner can delete in some enterprise configs, 
+                // but let's allow ADMIN for now specifically for workspace tasks.
+                if (membership?.role !== 'ADMIN') {
+                    return res.status(403).json({ error: 'Only admins can delete workspace tasks' });
+                }
+            }
+        }
+
+        await prisma.task.delete({
+            where: { id: id as string }
+        });
         res.json({ message: 'Task deleted' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to delete task' });

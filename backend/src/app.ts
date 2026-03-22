@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.routes';
 import taskRoutes from './routes/task.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import notificationRoutes from './routes/notification.routes';
+import workspaceRoutes from './routes/workspace.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { startReminderJob } from './jobs/reminder.job';
 
@@ -19,8 +20,14 @@ const app = express();
 // Base Middleware
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow if it's from the configured FRONTEND_URL or any Railway subdomain
-        if (!origin || origin === process.env.FRONTEND_URL || origin.endsWith('.up.railway.app')) {
+        const allowedOrigins = [
+            process.env.FRONTEND_URL,
+            'http://localhost:3000',
+            'http://127.0.0.1:3000'
+        ];
+
+        // Allow if it's from an allowed origin or any Railway subdomain
+        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.up.railway.app')) {
             callback(null, true);
         } else {
             console.log('Blocked by CORS:', origin);
@@ -75,6 +82,7 @@ app.get('/', (req: Request, res: Response) => {
                     <li><code>/api/tasks</code> - CRUD operations & AI PDF extraction</li>
                     <li><code>/api/analytics</code> - Productivity trends & charts</li>
                     <li><code>/api/notifications</code> - Real-time alerts & reminders</li>
+                    <li><code>/api/workspaces</code> - Team collaboration & Workspaces</li>
                     <li><code>/health</code> - Service health check</li>
                 </ul>
 
@@ -94,6 +102,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/workspaces', workspaceRoutes);
 
 // Start background jobs
 startReminderJob();
@@ -101,7 +110,7 @@ startReminderJob();
 app.get('/api', (req: Request, res: Response) => {
     res.json({
         message: 'Task Management System API',
-        endpoints: ['/api/auth', '/api/tasks', '/api/analytics', '/api/notifications', '/health']
+        endpoints: ['/api/auth', '/api/tasks', '/api/analytics', '/api/notifications', '/api/workspaces', '/health']
     });
 });
 

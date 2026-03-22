@@ -10,7 +10,7 @@ interface ExtractedTask {
     priority: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
-export default function ImportModal({ isOpen, onClose, onSuccess }: any) {
+export default function ImportModal({ isOpen, onClose, onSuccess, workspaceId }: any) {
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
     const [previewTasks, setPreviewTasks] = useState<ExtractedTask[]>([]);
@@ -75,7 +75,10 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: any) {
         try {
             // Sequential import for simplicity and to avoid rate limits/concurency issues
             for (const idx of Array.from(selectedIndices)) {
-                await api.post('/tasks', previewTasks[idx]);
+                await api.post('/tasks', {
+                    ...previewTasks[idx],
+                    workspaceId: workspaceId || undefined
+                });
             }
             setStatus('SUCCESS');
             setTimeout(() => {
