@@ -4,12 +4,15 @@ import { PrismaClient, Status, Priority } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 import { parsePdfTasks } from '../utils/pdfParser';
+import { logAuditAction } from '../services/audit.service';
+import { sendSlackNotification } from '../services/integration.service';
+import { syncTaskToGoogleCalendar, deleteTaskFromGoogleCalendar } from '../services/google-calendar.service';
 
 const prisma = new PrismaClient();
 
 export const createTask = async (req: AuthRequest, res: Response) => {
     try {
-        const { title, description, status, priority, cveId, dueDate, reminderTime, parentId, workspaceId, dependsOnIds, recurrence } = req.body;
+        const { title, description, status, priority, cveId, dueDate, reminderTime, parentId, workspaceId, dependsOnIds, recurrence, customFields } = req.body;
 
         if (workspaceId) {
             const membership = await (prisma as any).workspaceMember.findUnique({
@@ -45,6 +48,7 @@ export const createTask = async (req: AuthRequest, res: Response) => {
             parentId: parentId || null,
             workspaceId: workspaceId || null,
             recurrence: recurrence || null,
+            customFields: customFields || {},
         };
 
         // Connect dependencies if provided
@@ -56,6 +60,25 @@ export const createTask = async (req: AuthRequest, res: Response) => {
             data: taskData,
             include: { dependsOn: { select: { id: true, title: true } } }
         });
+
+        await logAuditAction({
+            action: 'TASK_CREATED',
+            resourceType: 'TASK',
+            resourceId: task.id,
+            userId: req.userId!,
+            workspaceId: workspaceId || undefined,
+            details: { title: task.title }
+        });
+
+        if (workspaceId) {
+            await sendSlackNotification(workspaceId, `🚀 *New Task Created*: "${task.title}" (Priority: ${task.priority})`);
+        }
+
+        // Sync to Google Calendar
+        if (task.dueDate) {
+            syncTaskToGoogleCalendar(req.userId!, task);
+        }
+
         res.status(201).json(task);
     } catch (error) {
         console.error('Error creating task:', error);
@@ -148,7 +171,7 @@ export const getTasks = async (req: AuthRequest, res: Response) => {
 export const updateTask = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { title, description, status, priority, cveId, dueDate, reminderTime, parentId, dependsOnIds, recurrence } = req.body;
+        const { title, description, status, priority, cveId, dueDate, reminderTime, parentId, dependsOnIds, recurrence, customFields } = req.body;
 
         let computedReminderTime = reminderTime ? new Date(reminderTime) : undefined;
         const parsedDueDate = dueDate ? new Date(dueDate) : undefined;
@@ -175,14 +198,29 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
             updateData.recurrence = recurrence || null;
         }
 
+        if (customFields !== undefined) {
+            updateData.customFields = customFields || {};
+        }
+
         // If task is marked DONE, set completedAt and handle recurrence
         if (status === 'DONE') {
             updateData.isOverdueNotified = true;
             updateData.completedAt = new Date();
         }
 
-        const taskToUpdate: any = await prisma.task.findUnique({ where: { id: id as string } });
+        const taskToUpdate: any = await prisma.task.findUnique({
+            where: { id: id as string },
+            include: { dependsOn: true }
+        });
         if (!taskToUpdate) return res.status(404).json({ error: 'Task not found' });
+
+        // Dependency check: Cannot complete if dependencies are not DONE
+        if (status === 'DONE') {
+            const incompleteDeps = taskToUpdate.dependsOn?.filter((dep: any) => dep.status !== 'DONE');
+            if (incompleteDeps && incompleteDeps.length > 0) {
+                return res.status(400).json({ error: 'Cannot complete task until all dependencies are DONE' });
+            }
+        }
 
         // Permission check
         if (taskToUpdate.userId !== req.userId) {
@@ -239,6 +277,25 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
                 dependedBy: { select: { id: true, title: true, status: true } }
             } as any
         });
+
+        await logAuditAction({
+            action: 'TASK_UPDATED',
+            resourceType: 'TASK',
+            resourceId: id as string,
+            userId: req.userId!,
+            workspaceId: taskToUpdate.workspaceId || undefined,
+            details: { previousStatus: taskToUpdate.status, newStatus: status }
+        });
+
+        if (status === 'DONE' && taskToUpdate.status !== 'DONE' && taskToUpdate.workspaceId) {
+            await sendSlackNotification(taskToUpdate.workspaceId, `✅ *Task Completed*: "${updatedTask?.title || taskToUpdate.title}"`);
+        }
+
+        // Sync to Google Calendar
+        if (updatedTask && updatedTask.dueDate) {
+            syncTaskToGoogleCalendar(req.userId!, updatedTask);
+        }
+
         res.json(updatedTask);
     } catch (error) {
         console.error('Update Error:', error);
@@ -306,9 +363,23 @@ export const deleteTask = async (req: AuthRequest, res: Response) => {
             }
         }
 
+        if (taskToDelete.googleEventId) {
+            deleteTaskFromGoogleCalendar(req.userId!, taskToDelete.googleEventId);
+        }
+
         await prisma.task.delete({
             where: { id: id as string }
         });
+
+        await logAuditAction({
+            action: 'TASK_DELETED',
+            resourceType: 'TASK',
+            resourceId: id as string,
+            userId: req.userId!,
+            workspaceId: taskToDelete.workspaceId || undefined,
+            details: { title: taskToDelete.title }
+        });
+
         res.json({ message: 'Task deleted' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to delete task' });

@@ -13,12 +13,21 @@ datasource db {
 model User {
   id              String           @id @default(uuid())
   email           String           @unique
-  password        String
+  password        String?
+  googleId        String?          @unique
   name            String?
   tasks           Task[]
   notifications   Notification[]
   memberships     WorkspaceMember[]
   ownedWorkspaces Workspace[]      @relation("OwnedWorkspaces")
+  auditLogs       AuditLog[]
+  comments        Comment[]
+  mentions        Mention[]
+  googleAccessToken  String?
+  googleRefreshToken String?
+  calendarSyncEnabled Boolean @default(false)
+  mfaEnabled      Boolean          @default(false)
+  mfaSecret       String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 }
@@ -37,8 +46,11 @@ model Task {
   isNotified        Boolean        @default(false)
   isOverdueNotified Boolean        @default(false)
   notifications     Notification[]
+  comments          Comment[]
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
+  customFields      Json?          @default("{}")
+  googleEventId     String?
   completedAt       DateTime?
   
   userId            String
@@ -77,6 +89,8 @@ model Workspace {
   owner     User             @relation("OwnedWorkspaces", fields: [ownerId], references: [id])
   members   WorkspaceMember[]
   tasks     Task[]
+  auditLogs AuditLog[]
+  integrations Integration[]
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
@@ -119,6 +133,7 @@ enum Priority {
 enum NotificationType {
   REMINDER
   OVERDUE
+  MENTION
 }
 
 model Notification {
@@ -132,8 +147,66 @@ model Notification {
   user      User             @relation(fields: [userId], references: [id])
   
   taskId    String?
-  task      Task?            @relation(fields: [taskId], references: [id])
+  task      Task?            @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isRead])
+}
+
+model AuditLog {
+  id           String    @id @default(uuid())
+  action       String    // e.g., "TASK_CREATED", "MEMBER_INVITED"
+  resourceType String    // e.g., "TASK", "WORKSPACE", "MEMBER"
+  resourceId   String?
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  workspaceId  String?
+  workspace    Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  details      Json?     // Generic payload for before/after state
+  createdAt    DateTime  @default(now())
+
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model Integration {
+  id          String    @id @default(uuid())
+  type        String    // e.g., "SLACK"
+  webhookUrl  String
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId])
+  @@index([type])
+}
+
+model Comment {
+  id        String    @id @default(uuid())
+  content   String
+  taskId    String
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  mentions  Mention[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([taskId])
+  @@index([userId])
+}
+
+model Mention {
+  id        String    @id @default(uuid())
+  commentId String
+  comment   Comment   @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@index([commentId])
+  @@index([userId])
 }

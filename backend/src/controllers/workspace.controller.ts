@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { PrismaClient } from '@prisma/client';
 import slugify from 'slugify';
+import { logAuditAction } from '../services/audit.service';
 
 const prisma = new PrismaClient() as any;
 
@@ -34,6 +35,15 @@ export const createWorkspace = async (req: AuthRequest, res: Response) => {
             include: {
                 members: true
             }
+        });
+
+        await logAuditAction({
+            action: 'WORKSPACE_CREATED',
+            resourceType: 'WORKSPACE',
+            resourceId: workspace.id,
+            userId: req.userId!,
+            workspaceId: workspace.id,
+            details: { name: workspace.name }
         });
 
         res.status(201).json(workspace);
@@ -110,19 +120,8 @@ export const inviteMember = async (req: AuthRequest, res: Response) => {
         const { id: workspaceId } = req.params;
         const { email, role } = req.body;
 
-        // Check if requester is ADMIN
-        const requester = await prisma.workspaceMember.findUnique({
-            where: {
-                workspaceId_userId: {
-                    workspaceId,
-                    userId: req.userId!
-                }
-            }
-        });
+        // Admin check is now handled by requireRole middleware
 
-        if (!requester || requester.role !== ROLES.ADMIN) {
-            return res.status(403).json({ error: 'Only admins can invite members' });
-        }
 
         const userToInvite = await prisma.user.findUnique({ where: { email } });
         if (!userToInvite) return res.status(404).json({ error: 'User not found' });
@@ -140,6 +139,15 @@ export const inviteMember = async (req: AuthRequest, res: Response) => {
             }
         });
 
+        await logAuditAction({
+            action: 'MEMBER_INVITED',
+            resourceType: 'MEMBER',
+            resourceId: newMember.id,
+            userId: req.userId!,
+            workspaceId: workspaceId as string,
+            details: { invitedUserId: userToInvite.id, role: newMember.role }
+        });
+
         res.status(201).json(newMember);
     } catch (error: any) {
         if (error.code === 'P2002') {
@@ -153,18 +161,8 @@ export const removeMember = async (req: AuthRequest, res: Response) => {
     try {
         const { id: workspaceId, userId: memberUserId } = req.params;
 
-        const requester = await prisma.workspaceMember.findUnique({
-            where: {
-                workspaceId_userId: {
-                    workspaceId,
-                    userId: req.userId!
-                }
-            }
-        });
+        // Admin check is now handled by requireRole middleware
 
-        if (!requester || requester.role !== ROLES.ADMIN) {
-            return res.status(403).json({ error: 'Only admins can remove members' });
-        }
 
         const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
         if (workspace?.ownerId === memberUserId) {
@@ -174,10 +172,19 @@ export const removeMember = async (req: AuthRequest, res: Response) => {
         await prisma.workspaceMember.delete({
             where: {
                 workspaceId_userId: {
-                    workspaceId,
-                    userId: memberUserId
+                    workspaceId: workspaceId as string,
+                    userId: memberUserId as string
                 }
             }
+        });
+
+        await logAuditAction({
+            action: 'MEMBER_REMOVED',
+            resourceType: 'MEMBER',
+            resourceId: memberUserId as string,
+            userId: req.userId!,
+            workspaceId: workspaceId as string,
+            details: { removedUserId: memberUserId }
         });
 
         res.json({ message: 'Member removed successfully' });
@@ -195,19 +202,7 @@ export const updateMemberRole = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ error: 'Invalid role. Must be ADMIN, MEMBER, or VIEWER' });
         }
 
-        // Check requester is ADMIN
-        const requester = await prisma.workspaceMember.findUnique({
-            where: {
-                workspaceId_userId: {
-                    workspaceId,
-                    userId: req.userId!
-                }
-            }
-        });
-
-        if (!requester || requester.role !== ROLES.ADMIN) {
-            return res.status(403).json({ error: 'Only admins can change roles' });
-        }
+        // Admin check is now handled by requireRole middleware
 
         // Prevent demoting the owner
         const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
@@ -218,8 +213,8 @@ export const updateMemberRole = async (req: AuthRequest, res: Response) => {
         const updated = await prisma.workspaceMember.update({
             where: {
                 workspaceId_userId: {
-                    workspaceId,
-                    userId: targetUserId
+                    workspaceId: workspaceId as string,
+                    userId: targetUserId as string
                 }
             },
             data: { role },
@@ -228,6 +223,15 @@ export const updateMemberRole = async (req: AuthRequest, res: Response) => {
                     select: { id: true, name: true, email: true }
                 }
             }
+        });
+
+        await logAuditAction({
+            action: 'MEMBER_ROLE_UPDATED',
+            resourceType: 'MEMBER',
+            resourceId: updated.id,
+            userId: req.userId!,
+            workspaceId: workspaceId as string,
+            details: { targetUserId: targetUserId, newRole: role }
         });
 
         res.json(updated);

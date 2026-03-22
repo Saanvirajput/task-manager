@@ -1,16 +1,18 @@
 import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
+import { sendSlackMessage } from '../services/slack.service';
+import { generateAIInsight } from '../services/ai.service';
 
 const prisma = new PrismaClient();
 
 export const startReminderJob = () => {
-    // Run every minute
+    // 1. Minute Cron: Reminders & Overdue Alerts
     cron.schedule('* * * * *', async () => {
         const now = new Date();
-        console.log(`[CRON] Running reminder check at ${now.toISOString()}`);
+        console.log(`[CRON] Running reminder/overdue checks at ${now.toISOString()}`);
 
         try {
-            // 1. Handle upcoming task reminders
+            // -- Handle upcoming task reminders --
             const reminderTasks = await prisma.task.findMany({
                 where: {
                     reminderTime: { lte: now },
@@ -20,6 +22,7 @@ export const startReminderJob = () => {
             });
 
             for (const task of reminderTasks) {
+                // Internal Notification
                 await prisma.notification.create({
                     data: {
                         message: `⏰ Reminder: "${task.title}" is coming up soon!`,
@@ -29,6 +32,10 @@ export const startReminderJob = () => {
                     },
                 });
 
+                // Slack Notification
+                const slackMsg = `🚨 *Task Reminder*\nTask: ${task.title}\nPriority: ${task.priority}\nDue: ${task.dueDate?.toLocaleDateString() || 'N/A'}`;
+                await sendSlackMessage(slackMsg);
+
                 await prisma.task.update({
                     where: { id: task.id },
                     data: { isNotified: true },
@@ -37,7 +44,7 @@ export const startReminderJob = () => {
                 console.log(`[CRON] Reminder sent for task: ${task.title}`);
             }
 
-            // 2. Handle overdue tasks
+            // -- Handle overdue tasks --
             const overdueTasks = await prisma.task.findMany({
                 where: {
                     dueDate: { lt: now },
@@ -48,16 +55,20 @@ export const startReminderJob = () => {
             });
 
             for (const task of overdueTasks) {
+                // Internal Notification
                 const priorityEmoji = task.priority === 'HIGH' ? '🔴' : task.priority === 'MEDIUM' ? '🟡' : '🟢';
-
                 await prisma.notification.create({
                     data: {
-                        message: `${priorityEmoji} Overdue: "${task.title}" was due on ${(task as any).dueDate!.toLocaleDateString()}!`,
+                        message: `${priorityEmoji} Overdue: "${task.title}" was due on ${task.dueDate?.toLocaleDateString()}!`,
                         type: 'OVERDUE',
                         userId: task.userId,
                         taskId: task.id,
                     },
                 });
+
+                // Slack Notification
+                const slackMsg = `⚠️ *Task Overdue*\nTask: ${task.title}\nWas due: ${task.dueDate?.toLocaleDateString() || 'N/A'}`;
+                await sendSlackMessage(slackMsg);
 
                 await prisma.task.update({
                     where: { id: task.id },
@@ -66,14 +77,39 @@ export const startReminderJob = () => {
 
                 console.log(`[CRON] Overdue alert sent for task: ${task.title}`);
             }
-
-            if (reminderTasks.length === 0 && overdueTasks.length === 0) {
-                console.log(`[CRON] No pending reminders or overdue tasks.`);
-            }
         } catch (error) {
-            console.error('[CRON] Error in reminder job:', error);
+            console.error('[CRON] Minute Job Error:', error);
         }
     });
 
-    console.log('✅ Reminder cron job started (runs every minute)');
+    // 2. Daily Cron (21:00): Summary & AI Insight
+    cron.schedule('0 21 * * *', async () => {
+        console.log(`[CRON] Generating daily productivity summary at ${new Date().toISOString()}`);
+        try {
+            const total = await prisma.task.count();
+            const completed = await prisma.task.count({ where: { status: 'DONE' } });
+            const pending = await prisma.task.count({ where: { status: { not: 'DONE' } } });
+            const overdue = await prisma.task.count({
+                where: {
+                    status: { not: 'DONE' },
+                    dueDate: { lt: new Date() }
+                }
+            });
+
+            // Summary Message
+            const summaryMsg = `📊 *Daily Summary*\n✔ Completed: ${completed}\n📌 Total: ${total}\n⏳ Pending: ${pending}\n⚠ Overdue: ${overdue}`;
+            await sendSlackMessage(summaryMsg);
+
+            // AI Insight Message
+            const insightText = await generateAIInsight({ total, completed, pending, overdue });
+            const aiMsg = `🧠 *AI Insight*\n${insightText}`;
+            await sendSlackMessage(aiMsg);
+
+            console.log('[CRON] Daily summary and AI insight sent to Slack');
+        } catch (error) {
+            console.error('[CRON] Daily Job Error:', error);
+        }
+    });
+
+    console.log('✅ TaskFlow Notification Jobs Initialized (Minute: Alerts, 21:00: Summary)');
 };

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { X, Plus, Trash2, CheckCircle2, Circle, RefreshCw, Link2 } from 'lucide-react';
+import TaskComments from './TaskComments';
 
 export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceId, availableTasks = [] }: any) {
     const [title, setTitle] = useState('');
@@ -17,6 +18,9 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceI
     const [newSubTaskTitle, setNewSubTaskTitle] = useState('');
     const [recurrence, setRecurrence] = useState('');
     const [selectedDependencies, setSelectedDependencies] = useState<string[]>([]);
+    const [customFields, setCustomFields] = useState<Record<string, string>>({});
+    const [newFieldKey, setNewFieldKey] = useState('');
+    const [newFieldValue, setNewFieldValue] = useState('');
 
     useEffect(() => {
         if (task) {
@@ -30,6 +34,7 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceI
             setAttachment(null);
             setRecurrence(task.recurrence || '');
             setSelectedDependencies(task.dependsOn?.map((d: any) => d.id) || []);
+            setCustomFields(task.customFields || {});
             fetchSubTasks(task.id);
         } else {
             setTitle('');
@@ -43,8 +48,22 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceI
             setSubTasks([]);
             setRecurrence('');
             setSelectedDependencies([]);
+            setCustomFields({});
         }
     }, [task]);
+
+    const addCustomField = () => {
+        if (!newFieldKey.trim()) return;
+        setCustomFields({ ...customFields, [newFieldKey]: newFieldValue });
+        setNewFieldKey('');
+        setNewFieldValue('');
+    };
+
+    const removeCustomField = (key: string) => {
+        const next = { ...customFields };
+        delete next[key];
+        setCustomFields(next);
+    };
 
     const fetchSubTasks = async (parentId: string) => {
         try {
@@ -108,6 +127,7 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceI
             if (workspaceId && !task) formData.append('workspaceId', workspaceId);
             if (recurrence) formData.append('recurrence', recurrence);
             selectedDependencies.forEach(id => formData.append('dependsOnIds', id));
+            formData.append('customFields', JSON.stringify(customFields));
 
             if (task) {
                 await api.put(`/tasks/${task.id}`, formData, {
@@ -198,6 +218,44 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceI
                             <p className="text-xs text-purple-500 mt-1 font-medium">🔁 A new task will be auto-created when this one is completed</p>
                         )}
                     </div>
+                    {/* Custom Fields */}
+                    <div>
+                        <label className="block text-sm font-semibold text-neutral-800 mb-1">Custom Fields (Metadata)</label>
+                        <div className="space-y-2 mb-3">
+                            {Object.entries(customFields).map(([key, value]) => (
+                                <div key={key} className="flex items-center gap-2 bg-neutral-50 p-2 rounded-lg border border-neutral-100">
+                                    <span className="text-xs font-black text-neutral-400 uppercase tracking-wider w-24 truncate">{key}:</span>
+                                    <span className="text-sm text-neutral-700 flex-1 truncate">{value}</span>
+                                    <button onClick={() => removeCustomField(key)} className="text-neutral-300 hover:text-red-500 transition-colors">
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                placeholder="Key (e.g. Risk)"
+                                value={newFieldKey}
+                                onChange={(e) => setNewFieldKey(e.target.value)}
+                                className="w-1/3 text-xs"
+                            />
+                            <input
+                                type="text"
+                                placeholder="Value (e.g. High)"
+                                value={newFieldValue}
+                                onChange={(e) => setNewFieldValue(e.target.value)}
+                                className="flex-1 text-xs"
+                            />
+                            <button
+                                type="button"
+                                onClick={addCustomField}
+                                className="p-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition-colors"
+                            >
+                                <Plus size={16} />
+                            </button>
+                        </div>
+                    </div>
                     {/* Dependencies Selection */}
                     <div>
                         <label className="block text-sm font-semibold text-neutral-800 mb-1 flex items-center gap-1.5">
@@ -282,6 +340,9 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceI
                         </button>
                     </form>
                 </div>
+
+                {/* Comments Section */}
+                {task && <TaskComments taskId={task.id} workspaceId={workspaceId} />}
             </div>
         </div>
     );

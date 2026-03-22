@@ -30,8 +30,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(null);
     };
 
+    const syncUser = async () => {
+        try {
+            const api = (await import('@/lib/api')).default;
+            const res = await api.get('/auth/me');
+            localStorage.setItem('user', JSON.stringify(res.data));
+            setUser(res.data);
+        } catch (err) {
+            console.error('Failed to sync user', err);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, logout, syncUser }}>
             {children}
         </AuthContext.Provider>
     );

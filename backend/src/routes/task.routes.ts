@@ -22,6 +22,8 @@ const upload = multer({
     }
 });
 
+import { getComments, addComment, deleteComment } from '../controllers/comment.controller';
+
 const router = Router();
 
 router.use(authMiddleware);
@@ -31,5 +33,10 @@ router.post('/', upload.single('attachment'), createTask);
 router.post('/extract-pdf', upload.single('attachment'), extractTasksFromPdf);
 router.put('/:id', upload.single('attachment'), updateTask);
 router.delete('/:id', deleteTask);
+
+// Comment routes
+router.get('/:id/comments', getComments);
+router.post('/:id/comments', addComment);
+router.delete('/comments/:commentId', deleteComment);
 
 export default router;

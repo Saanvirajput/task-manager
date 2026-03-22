@@ -1,51 +1,67 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
-import prisma from '../utils/prisma';
+import { PrismaClient } from '@prisma/client';
 
-export const getAnalyticsOverview = async (req: AuthRequest, res: Response) => {
+const prisma = new PrismaClient();
+
+export const getWorkloadAnalytics = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.userId!;
+        const { workspaceId } = req.params;
 
-        const [totalTasks, completedTasks, pendingTasks] = await Promise.all([
-            prisma.task.count({ where: { userId } }),
-            prisma.task.count({ where: { userId, status: 'DONE' } }),
-            prisma.task.count({ where: { userId, status: { not: 'DONE' } } })
-        ]);
-
-        const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-
-        // Average Completion Time
-        const doneTasks = await prisma.task.findMany({
-            where: { userId, status: 'DONE', completedAt: { not: null } },
-            select: { createdAt: true, completedAt: true }
+        // Check if the user is a member of the workspace
+        const membership = await (prisma as any).workspaceMember.findUnique({
+            where: {
+                workspaceId_userId: {
+                    workspaceId,
+                    userId: req.userId!
+                }
+            }
         });
 
-        const averageCompletionTime = doneTasks.length > 0
-            ? doneTasks.reduce((acc, task) => acc + (task.completedAt!.getTime() - task.createdAt.getTime()), 0) / doneTasks.length
-            : 0;
+        if (!membership) {
+            return res.status(403).json({ error: 'Access denied to this workspace' });
+        }
 
-        // Tasks Created Per Day (last 7 days) using Postgres syntax
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-        const tasksCreatedPerDayRaw = await prisma.$queryRaw`
-      SELECT DATE("createdAt") as date, count(*)::int as count
-      FROM "Task"
-      WHERE "userId" = ${userId} AND "createdAt" >= ${sevenDaysAgo}
-      GROUP BY DATE("createdAt")
-      ORDER BY DATE("createdAt") ASC
-    `;
-
-        res.json({
-            totalTasks,
-            completedTasks,
-            pendingTasks,
-            completionRate: Number(completionRate.toFixed(2)),
-            averageCompletionTime: Math.round(averageCompletionTime / (1000 * 60 * 60)), // in hours
-            tasksCreatedPerDay: tasksCreatedPerDayRaw
+        // Fetch all members of the workspace
+        const members = await (prisma as any).workspaceMember.findMany({
+            where: { workspaceId },
+            include: { user: { select: { id: true, name: true, email: true } } }
         });
+
+        // Fetch all tasks in the workspace
+        const tasks = await (prisma as any).task.findMany({
+            where: { workspaceId, parentId: null } // Only consider top-level tasks for workload summary
+        });
+
+        const workloadData = members.map((member: any) => {
+            const userTasks = tasks.filter((t: any) => t.userId === member.userId);
+            const total = userTasks.length;
+            const completed = userTasks.filter((t: any) => t.status === 'DONE').length;
+            const inProgress = userTasks.filter((t: any) => t.status === 'IN_PROGRESS').length;
+            const todo = userTasks.filter((t: any) => t.status === 'TODO').length;
+
+            // Calculate a Simulated AI Health Score:
+            // 100 = Perfect distribution
+            // Deductions for overdue tasks, high-priority pileups, etc.
+            const now = new Date();
+            const highPriorityUnfinished = userTasks.filter((t: any) => t.status !== 'DONE' && t.priority === 'HIGH').length;
+            const overdueTasks = userTasks.filter((t: any) => t.status !== 'DONE' && t.dueDate && new Date(t.dueDate) < now).length;
+
+            // Formula: Base 100 - (Overdue * 15) - (High Priority Pileup * 5) - (Large Backlog * 2)
+            const deductions = (overdueTasks * 15) + (highPriorityUnfinished * 5) + (todo > 5 ? (todo - 5) * 2 : 0);
+            const healthScore = Math.max(0, 100 - deductions);
+
+            return {
+                userId: member.userId,
+                name: member.user.name || member.user.email,
+                stats: { total, completed, inProgress, todo },
+                healthScore
+            };
+        });
+
+        res.json(workloadData);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to fetch analytics' });
+        console.error('Analytics Error:', error);
+        res.status(500).json({ error: 'Internal server error calculating analytics' });
     }
 };

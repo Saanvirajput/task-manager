@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import passport from './config/passport';
 
 // Import routes and middleware
 import authRoutes from './routes/auth.routes';
@@ -9,6 +10,8 @@ import taskRoutes from './routes/task.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import notificationRoutes from './routes/notification.routes';
 import workspaceRoutes from './routes/workspace.routes';
+import auditRoutes from './routes/audit.routes';
+import integrationRoutes from './routes/integration.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { startReminderJob } from './jobs/reminder.job';
 
@@ -40,6 +43,9 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Initialize Passport
+app.use(passport.initialize());
 
 app.get('/', (req: Request, res: Response) => {
     // If a frontend URL is configured, redirect to it
@@ -103,6 +109,8 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/workspaces', workspaceRoutes);
+app.use('/api/workspaces', auditRoutes);
+app.use('/api/integrations', integrationRoutes);
 
 // Start background jobs
 startReminderJob();

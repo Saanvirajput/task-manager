@@ -10,14 +10,17 @@ import {
 import {
     LayoutDashboard, ListTodo, CheckCircle2, Clock,
     Search, Plus, LogOut, ChevronLeft, ChevronRight,
-    Filter, Calendar, ArrowUpRight, FileText, Paperclip, Check, BarChart3, Table2
+    Filter, Calendar, ArrowUpRight, FileText, Paperclip, Check, BarChart3, Table2, Settings
 } from 'lucide-react';
 import TaskModal from '@/components/TaskModal';
 import ImportModal from '@/components/ImportModal';
 import NotificationBell from '@/components/NotificationBell';
 import WorkspaceSwitcher from '@/components/WorkspaceSwitcher';
 import GanttChart from '@/components/GanttChart';
+import UserSettingsModal from '@/components/UserSettingsModal';
+import WorkloadAnalytics from '@/components/WorkloadAnalytics';
 import confetti from 'canvas-confetti';
+
 
 export default function DashboardPage() {
     const { user, logout, loading: authLoading } = useAuth();
@@ -32,10 +35,12 @@ export default function DashboardPage() {
     const [totalPages, setTotalPages] = useState(1);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
     const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
     const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'table' | 'gantt'>('table');
+    const [showAnalytics, setShowAnalytics] = useState(false);
 
     const fetchDashboardData = useCallback(async () => {
         try {
@@ -124,10 +129,24 @@ export default function DashboardPage() {
                 />
 
                 <nav className="space-y-2 mt-8">
-                    <button className="flex items-center gap-3 w-full p-2 rounded-md bg-white border border-neutral-200 text-brand-600 font-bold shadow-sm">
+                    <button
+                        onClick={() => setShowAnalytics(false)}
+                        className={`flex items-center gap-3 w-full p-2 rounded-md transition-all ${!showAnalytics ? 'bg-white border border-neutral-200 text-brand-600 font-bold shadow-sm' : 'font-bold text-neutral-600 hover:bg-neutral-200'}`}
+                    >
                         <LayoutDashboard size={20} /> Dashboard
                     </button>
-                    <button onClick={logout} className="flex items-center gap-3 w-full p-2 rounded-md font-bold text-neutral-600 hover:bg-neutral-200 transition-colors mt-auto">
+                    {activeWorkspaceId && (
+                        <button
+                            onClick={() => setShowAnalytics(true)}
+                            className={`flex items-center gap-3 w-full p-2 rounded-md transition-all ${showAnalytics ? 'bg-white border border-neutral-200 text-brand-600 font-bold shadow-sm' : 'font-bold text-neutral-600 hover:bg-neutral-200'}`}
+                        >
+                            <BarChart3 size={20} /> Team Insights
+                        </button>
+                    )}
+                    <button onClick={() => setIsUserSettingsOpen(true)} className="flex items-center gap-3 w-full p-2 rounded-md font-bold text-neutral-600 hover:bg-neutral-200 transition-colors">
+                        <Settings size={20} /> Settings (MFA)
+                    </button>
+                    <button onClick={logout} className="flex items-center gap-3 w-full p-2 rounded-md font-bold text-neutral-600 hover:bg-neutral-200 transition-colors">
                         <LogOut size={20} /> Logout
                     </button>
                 </nav>
@@ -218,7 +237,9 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {viewMode === 'gantt' ? (
+                {showAnalytics && activeWorkspaceId ? (
+                    <WorkloadAnalytics workspaceId={activeWorkspaceId} />
+                ) : viewMode === 'gantt' ? (
                     <GanttChart
                         tasks={tasks}
                         onTaskClick={(t: any) => { setEditingTask(t); setIsModalOpen(true); }}
@@ -380,6 +401,11 @@ export default function DashboardPage() {
                 onClose={() => setIsImportModalOpen(false)}
                 onSuccess={fetchDashboardData}
                 workspaceId={activeWorkspaceId}
+            />
+
+            <UserSettingsModal
+                isOpen={isUserSettingsOpen}
+                onClose={() => setIsUserSettingsOpen(false)}
             />
 
             {deletingTaskId && (
