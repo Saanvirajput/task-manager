@@ -1,204 +1,74 @@
-# 🛰️ TaskFlow: Data-Driven Task Management System
+# 🛰️ TaskFlow: The AI-Powered Productivity Ecosystem
 
-![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
-![Node.js](https://img.shields.io/badge/Node.js-20-43853D?style=for-the-badge&logo=node.js)
-![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=for-the-badge&logo=prisma)
-![Tailwind](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+[![Deployment](https://img.shields.io/badge/Production-Live-success?style=for-the-badge&logo=rocket)](https://task-manager-production-1e76.up.railway.app)
+[![Architecture](https://img.shields.io/badge/Architecture-Clean-blue?style=for-the-badge)](https://github.com/Saanvirajput/task-manager)
+[![AI](https://img.shields.io/badge/Powered_by-Gemini_Flash-purple?style=for-the-badge)](https://deepmind.google/technologies/gemini/)
 
-A premium, full-stack task management platform designed for efficiency and data-driven insights. Built with a modern tech stack and integrated with **Neon Cloud PostgreSQL**, featuring AI-powered PDF extraction fueled by Google's Gemini LLM and an automated Node-Cron notification system.
-
-## 🚀 Live Demo
-
-[![Live Demo](https://img.shields.io/badge/Live_Demo-🚀-6366f1?style=for-the-badge&logo=rocket)](https://task-manager-production-1e76.up.railway.app)
-
-- **Database**: Neon Cloud PostgreSQL (Serverless)
-
-![Dashboard Preview](./docs/assets/dashboard.png)
-
-
-## 🔄 System Architecture & AI Workflow
-
-```mermaid
-graph TD
-    classDef user fill:#6366f1,stroke:#4f46e5,color:#fff,stroke-width:2px,rx:8px,ry:8px;
-    classDef frontend fill:#14b8a6,stroke:#0d9488,color:#fff,stroke-width:2px,rx:8px,ry:8px;
-    classDef backend fill:#f59e0b,stroke:#d97706,color:#fff,stroke-width:2px,rx:8px,ry:8px;
-    classDef db fill:#ec4899,stroke:#db2777,color:#fff,stroke-width:2px,rx:8px,ry:8px;
-    classDef ai fill:#a855f7,stroke:#9333ea,color:#fff,stroke-width:2px,rx:8px,ry:8px;
-
-    subgraph User["👤 User Flow"]
-        Upload[📤 Upload PDF Document]:::user
-        Review[👀 Review Auto-Generated Tasks]:::user
-        Dashboard[📊 Track Progress on Dashboard]:::user
-    end
-
-    subgraph Frontend["💻 Next.js Frontend App"]
-        UI[Upload Component]:::frontend
-        State[Task State Manager]:::frontend
-    end
-
-    subgraph Backend["⚙️ Express Backend"]
-        API[POST /api/tasks/extract-pdf]:::backend
-        Multer[Multer Temp Storage]:::backend
-        Parser[AI PDF Parser]:::backend
-        Delete[fs.unlinkSync Cleanup]:::backend
-    end
-
-    subgraph Storage["🌐 Integrations"]
-        Gemini[🧠 LLM Extractor Engine]:::ai
-        Neon[🗄️ Neon PostgreSQL]:::db
-    end
-
-    Upload -->|1. Select File| UI
-    UI -->|2. FormData POST| API
-    
-    API -->|3. Save to disk| Multer
-    Multer -->|4. Read PDF Buffer| Parser
-    Parser -->|5. Send buffer data| Gemini
-    Gemini -->|6. Return JSON Data| Parser
-    
-    Parser -->|7. Delete temp file| Delete
-    Delete -->|8. Send API Response| UI
-    
-    UI -->|9. Populate Form| Review
-    Review -->|10. Confirm & Create| State
-    
-    State -->|11. POST /api/tasks| Neon
-    State -->|12. Real-time Updates| Dashboard
-```
-
-## 🗺️ End-to-End User Journey
-
-```mermaid
-journey
-    title A Day in TaskFlow
-    section Onboarding
-      Sign Up: 5: User
-      Login: 5: User
-    section AI Task Creation
-      Upload PDF Syllabus: 4: User, AI Engine
-      AI Parsing Content: 5: AI Engine
-      Review & Edit Suggested Tasks: 4: User
-    section Management
-      Organize Dashboard: 5: User
-      Check Completion Charts: 4: User
-    section Success
-      Get Overdue Notification: 3: Backend
-      Complete High-Priority Task: 5: User
-      Observe Productivity Growth: 5: User
-```
-
-## ✨ Features
-
-- **🤖 Smart AI PDF Extraction**: Upload any syllabus, codebase requirement, or project PDF, and our integrated Google Gemini AI engine will instantly read, parse, and suggest a structured, pre-scheduled list of actionable tasks directly into your workflow.
-- **🔔 Background Notifications**: A powerful `node-cron` background job continuously monitors task deadlines and automatically pushes visual Toast alerts and bell-badge increments for upcoming and overdue tasks.
-- **🚀 Performance Dashboard**: Real-time analytics on task completion rates and creation trends.
-- **🛡️ Secure Authentication**: JWT-based auth with Access & Refresh token rotation.
-- **📊 Real-time Analytics**: Interactive charts powered by Recharts showing productivity trends.
-- **⚡ Fast Search & Filter**: Instant search with status and priority filtering for high-volume task lists.
-- **☁️ Cloud Integrated**: Pre-configured for serverless Neon PostgreSQL.
-- **🎭 Modern UI**: Clean, ClickUp-inspired interface with responsive design and subtle micro-animations.
-
-## 🎯 Use Cases
-
-- **Personal Task Tracking**: Stay on top of daily to-dos with a clean, distraction-free interface.
-- **Productivity Analysis**: Use the built-in charts to visualize your work patterns and improve efficiency.
-- **Priority Management**: Focus on what matters most using High/Medium/Low priority tagging.
-- **Goal Visualization**: Monitor your completion rates to maintain momentum on long-term projects.
-
-## 💎 Why TaskFlow? (Competitive Edge)
-
-While many task managers focus solely on manual list-making, **TaskFlow** stands out by treating task management as a **data-driven lifecycle**.
-
-### 📊 Competitive Comparison
-
-| Feature | Standard Task Lists | Enterprise Tools (ClickUp/Jira) | **TaskFlow** |
-| :--- | :---: | :---: | :---: |
-| **Task Creation** | Manual Entry Only | Manual / API | **🧠 AI PDF Extraction** |
-| **Complexity** | Simple / Flat | High / Overwhelming | **🎯 Focused & Lean** |
-| **Deployment** | Local / SaaS | SaaS Only | **☁️ Cloud Independent** |
-| **Security** | Basic Auth | Enterprise SSO | **🛡️ JWT Token Rotation** |
-| **Cost** | Free Tier Limits | Expensive Monthly Sub | **🔓 Free & Open Source** |
-
-### 🚀 Technical Standing Out Points
-
-#### **Backend Excellence**
-- **AI-Powered Parsing**: Unlike typical apps, TaskFlow leverages the **Gemini 1.5 Flash** model to parse complex PDF requirement docs and automatically map out your work schedule.
-- **Persistent Cron Reminders**: Built-in server-side `node-cron` jobs ensure that even if you close your tab, the system is actively tracking and flagging your overdue tasks in the database.
-- **Production-Grade Auth**: Implements a full **JWT lifecycle** with Refresh tokens, which is usually only found in commercially licensed software.
-
-#### **Frontend Excellence**
-- **Performance Visualization**: Uses **Recharts** to transform raw tasks into actionable productivity data (creation trends vs completion rates).
-- **UX Micro-animations**: Subtle, high-end transitions and toast notifications provide a premium "software-as-a-service" feel.
-- **Clean Architecture**: Built using **Next.js 14 App Router**, ensuring SEO-friendly layouts and lightning-fast client-side navigation.
-
-## 🛠️ Tech Stack & Structure
-
-- **Frontend**: Next.js 14, Tailwind CSS, Recharts, Lucide Icons.
-- **Backend**: Node.js, Express, Prisma ORM, TypeScript, `node-cron`.
-- **Database**: Neon Cloud PostgreSQL.
-- **AI & Processing**: Google Gemini 1.5 Flash (for PDF extraction), Multer.
-- **Auth**: JWT (Access & Refresh token rotation), Bcrypt.
-
-### 📂 Directory Structure
-
-```text
-task-manager/
-├── frontend/                    <a href="https://task-manager-production-1e76.up.railway.app" target="_blank">💻 Frontend App</a>
-│   ├── src/app/             # App Router pages (Dashboard, Login)
-│   ├── src/components/      # Reusable UI (Modals, NotificationBell)
-│   ├── src/lib/             # Axios API interceptors & Auth Context
-│   └── src/styles/          # Tailwind configuration & global CSS
-├── backend/                 # Node.js Express Application
-│   ├── prisma/              # Schema definitions & migrations
-│   ├── src/controllers/     # Route logic (Auth, Tasks, Notifications)
-│   ├── src/jobs/            # Background cron jobs
-│   ├── src/middleware/      # JWT verification & Error handlers
-│   └── src/utils/           # AI PDF parsing utility
-└── LICENSE
-```
-
-## 🚀 Quick Start
-
-### 1. Clone & Install
-```bash
-git clone https://github.com/Saanvirajput/task-manager.git
-cd task-manager
-npm run install:all
-```
-
-### 2. Environment Setup
-Create a `.env` file in the `backend/` directory:
-```env
-DATABASE_URL="your_neon_postgresql_url"
-JWT_ACCESS_SECRET="your_secret"
-JWT_REFRESH_SECRET="your_secret"
-GEMINI_API_KEY="your_gemini_api_key_here"
-```
-
-### 3. Database Sync & Seed
-```bash
-cd backend
-npx prisma db push
-npm run seed
-```
-
-### 4. Run Development
-In the root directory:
-```bash
-npm run dev
-```
-
-## 🛠️ Tech Stack
-
-- **Frontend**: Next.js 14, Tailwind CSS, Recharts, Lucide Icons.
-- **Backend**: Node.js, Express, Prisma ORM, TypeScript, `node-cron`.
-- **Database**: Neon Cloud PostgreSQL.
-- **AI & Processing**: Google Gemini 1.5 Flash (for PDF extraction), Multer.
-- **Auth**: JWT (Access & Refresh token rotation), Bcrypt.
+**TaskFlow** is an elite, data-driven task management platform engineered for high-performance teams. It transcends traditional list-making by integrating an **AI Productivity Coach** (Gemini LLM), bi-directional **Google Ecosystem** synchronization, and real-time **Workload Balancing** analytics.
 
 ---
+
+## 💎 The TaskFlow Advantage
+
+TaskFlow is designed for the modern professional who demands more than just a checkbox. Our ecosystem bridges the gap between raw data (PDFs/Requirements) and actionable results.
+
+### 🌌 Core Technology Pillars
+| Pillar | Technology | Value Proposition |
+| :--- | :--- | :--- |
+| **🧠 Intelligence** | Google Gemini 1.5 Flash | Instant task extraction from complex PDF documentation. |
+| **🔄 Sync** | Bi-directional Webhooks | Real-time mapping to Google Calendar & Slack workspaces. |
+| **📊 Analytics** | Recharts & AI Logic | Data-driven team health scoring and workload balancing. |
+| **🛡️ Security** | MFA & JWT Rotation | Enterprise-grade protection with audit-trail logging. |
+
 ---
-Built with ✨ by Saanvi Rajput
+
+## 🔄 Integrated Ecosystem flow
+
+```mermaid
+graph LR
+    classDef core fill:#6366f1,stroke:#4f46e5,color:#fff,stroke-width:2px;
+    classDef sync fill:#14b8a6,stroke:#0d9488,color:#fff,stroke-width:2px;
+    classDef ai fill:#a855f7,stroke:#9333ea,color:#fff,stroke-width:2px;
+
+    User([👤 User]) -->|Upload PDF| TaskFlow
+    TaskFlow{{"🛰️ TaskFlow Core"}}:::core
+    
+    TaskFlow -->|Analyze| Gemini(🧠 AI Coach):::ai
+    Gemini -->|Tasks| TaskFlow
+    
+    TaskFlow <-->|Bi-Sync| GCal(📅 Google Calendar):::sync
+    TaskFlow -->|Alerts| Slack(💬 Slack Integration):::sync
+    TaskFlow -->|Visualize| Dashboard(📊 Analytics Engine):::core
+```
+
+---
+
+## ✨ Enterprise Features
+
+- **🤖 AI-Powered PDF Ingestion**: Transform syllabi, PRDs, or security audits into structured milestones instantly.
+- **📅 Google Calendar Bi-Sync**: Tasks appear as events automatically; updates in TaskFlow reflect in your calendar.
+- **💬 Slack Productivity Coach**: Nightly AI-driven performance summaries and real-time high-priority overdue pings.
+- **📊 Team Workload Balancing**: Real-time "Health Scores" based on task priority, bandwidth, and upcoming deadlines.
+- **🔐 Multi-Factor Security (MFA)**: Secure your workspace with TOTP-based authentication.
+- **🔗 Advanced Dependencies**: Visualize bottlenecks with built-in task blockers and Gantt-style logic.
+- **💬 Collaboration & Mentions**: Full comment threads with @mention notifications and real-time audit logs.
+
+---
+
+## 🛠️ Architecture & Setup
+
+### 📂 Directory Map
+- **`frontend/`**: Next.js 14 App Router (Tailwind + Lucide + Framer).
+- **`backend/`**: Node.js 20, Express, Prisma ORM (Neon Cloud DB), `node-cron`.
+- **`.agent/workflows/`**: Professional operational guides for DevOps and Setup.
+
+### 🚀 Rapid Deployment
+1. **Clone**: `git clone https://github.com/Saanvirajput/task-manager.git`
+2. **Backend**: `npm install && npx prisma db push && npm run start`
+3. **Frontend**: `npm install && npm run dev`
+
+---
+> [!IMPORTANT]
+> **TaskFlow** is pre-configured for **Railway.app**. Refer to `/.agent/workflows/deploy.md` for the unified deployment strategy.
+
+Built with ✨ by **Saanvi Rajput**
