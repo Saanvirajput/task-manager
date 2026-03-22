@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { X } from 'lucide-react';
+import { X, Plus, Trash2, CheckCircle2, Circle } from 'lucide-react';
 
 export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
     const [title, setTitle] = useState('');
@@ -13,6 +13,8 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
     const [dueDate, setDueDate] = useState('');
     const [reminderTime, setReminderTime] = useState('');
     const [attachment, setAttachment] = useState<File | null>(null);
+    const [subTasks, setSubTasks] = useState<any[]>([]);
+    const [newSubTaskTitle, setNewSubTaskTitle] = useState('');
 
     useEffect(() => {
         if (task) {
@@ -24,6 +26,7 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
             setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : '');
             setReminderTime(task.reminderTime ? new Date(task.reminderTime).toISOString().slice(0, 16) : '');
             setAttachment(null);
+            fetchSubTasks(task.id);
         } else {
             setTitle('');
             setDescription('');
@@ -33,8 +36,55 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
             setDueDate('');
             setReminderTime('');
             setAttachment(null);
+            setSubTasks([]);
         }
     }, [task]);
+
+    const fetchSubTasks = async (parentId: string) => {
+        try {
+            const { data } = await api.get(`/tasks?parentId=${parentId}&limit=100`);
+            setSubTasks(data.tasks);
+        } catch (error) {
+            console.error('Failed to fetch subtasks', error);
+        }
+    };
+
+    const addSubTask = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newSubTaskTitle.trim()) return;
+
+        if (task) {
+            try {
+                await api.post('/tasks', {
+                    title: newSubTaskTitle,
+                    parentId: task.id,
+                    status: 'TODO'
+                });
+                setNewSubTaskTitle('');
+                fetchSubTasks(task.id);
+            } catch (error) {
+                console.error('Failed to add subtask', error);
+            }
+        } else {
+            // For new tasks, we'll stage them locally and save after parent creation
+            setSubTasks([...subTasks, { title: newSubTaskTitle, status: 'TODO', id: Math.random().toString() }]);
+            setNewSubTaskTitle('');
+        }
+    };
+
+    const toggleSubTaskStatus = async (sub: any) => {
+        const newSubStatus = sub.status === 'DONE' ? 'TODO' : 'DONE';
+        if (task) {
+            try {
+                await api.put(`/tasks/${sub.id}`, { ...sub, status: newSubStatus });
+                fetchSubTasks(task.id);
+            } catch (error) {
+                console.error('Failed to toggle subtask status', error);
+            }
+        } else {
+            setSubTasks(subTasks.map(s => s.id === sub.id ? { ...s, status: newSubStatus } : s));
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -127,6 +177,47 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task }: any) {
                         {task ? 'Update' : 'Create'} Task
                     </button>
                 </form>
+
+                {/* Sub-tasks Section */}
+                <div className="mt-8 pt-6 border-t border-neutral-100">
+                    <h3 className="text-sm font-bold text-neutral-800 mb-4 flex items-center gap-2">
+                        Sub-tasks
+                        <span className="text-[10px] bg-brand-50 text-brand-600 px-1.5 py-0.5 rounded-full">
+                            {subTasks.filter(s => s.status === 'DONE').length}/{subTasks.length}
+                        </span>
+                    </h3>
+
+                    <div className="space-y-2 mb-4 max-h-40 overflow-y-auto pr-1">
+                        {subTasks.map(sub => (
+                            <div key={sub.id} className="flex items-center justify-between group p-2 rounded-lg hover:bg-neutral-50 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <button onClick={() => toggleSubTaskStatus(sub)} className="text-neutral-400 hover:text-brand-500 transition-colors">
+                                        {sub.status === 'DONE' ? <CheckCircle2 size={18} className="text-green-500" /> : <Circle size={18} />}
+                                    </button>
+                                    <span className={`text-sm ${sub.status === 'DONE' ? 'text-neutral-400 line-through' : 'text-neutral-700'}`}>
+                                        {sub.title}
+                                    </span>
+                                </div>
+                                <button className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 transition-all">
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <form onSubmit={addSubTask} className="flex gap-2">
+                        <input
+                            type="text"
+                            placeholder="Add sub-task..."
+                            value={newSubTaskTitle}
+                            onChange={(e) => setNewSubTaskTitle(e.target.value)}
+                            className="flex-1 text-sm py-1.5"
+                        />
+                        <button type="submit" className="p-2 bg-neutral-100 hover:bg-brand-500 hover:text-white rounded-md transition-all">
+                            <Plus size={18} />
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     );

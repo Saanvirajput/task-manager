@@ -41,9 +41,15 @@ model Task {
   userId      String
   user        User     @relation(fields: [userId], references: [id])
 
+  // Sub-tasks Support
+  parentId    String?
+  parent      Task?    @relation("SubTasks", fields: [parentId], references: [id], onDelete: Cascade)
+  subTasks    Task[]   @relation("SubTasks")
+
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@index([parentId])
 }
 
 enum Status {

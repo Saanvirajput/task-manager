@@ -241,6 +241,11 @@ export default function DashboardPage() {
                                         <div className={`font-bold transition-all duration-500 flex items-center gap-2 ${task.status === 'DONE' ? 'text-neutral-400 line-through' : 'text-neutral-800'
                                             }`}>
                                             {task.title}
+                                            {task.subTasks && task.subTasks.length > 0 && (
+                                                <span className="text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-full font-medium ml-1">
+                                                    {task.subTasks.filter((s: any) => s.status === 'DONE').length}/{task.subTasks.length}
+                                                </span>
+                                            )}
                                             {task.attachmentUrl && (
                                                 <a
                                                     href={`${(process.env.NEXT_PUBLIC_API_URL || '').replace('/api', '')}${task.attachmentUrl}`}

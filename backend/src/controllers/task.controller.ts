@@ -10,7 +10,7 @@ const prisma = new PrismaClient();
 export const createTask = async (req: AuthRequest, res: Response) => {
     try {
         console.log('Creating task:', req.body, 'for user:', req.userId);
-        const { title, description, status, priority, cveId, dueDate, reminderTime } = req.body;
+        const { title, description, status, priority, cveId, dueDate, reminderTime, parentId } = req.body;
 
         // Auto-set reminderTime to 1 hour before dueDate if not provided
         let computedReminderTime = reminderTime ? new Date(reminderTime) : undefined;
@@ -19,19 +19,22 @@ export const createTask = async (req: AuthRequest, res: Response) => {
             computedReminderTime = new Date(parsedDueDate.getTime() - 60 * 60 * 1000);
         }
 
+        const taskData: any = {
+            title,
+            description,
+            status: (status as Status) || Status.TODO,
+            priority: (priority as Priority) || Priority.MEDIUM,
+            cveId,
+            dueDate: parsedDueDate,
+            reminderTime: computedReminderTime,
+            attachmentName: req.file?.originalname,
+            attachmentUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
+            userId: req.userId!,
+            parentId: parentId || null
+        };
+
         const task = await prisma.task.create({
-            data: {
-                title,
-                description,
-                status: (status as Status) || Status.TODO,
-                priority: (priority as Priority) || Priority.MEDIUM,
-                cveId,
-                dueDate: parsedDueDate,
-                reminderTime: computedReminderTime,
-                attachmentName: req.file?.originalname,
-                attachmentUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
-                userId: req.userId!
-            }
+            data: taskData
         });
         console.log('Task created successfully:', task.id);
         res.status(201).json(task);
@@ -47,7 +50,10 @@ export const getTasks = async (req: AuthRequest, res: Response) => {
         const skip = (Number(page) - 1) * Number(limit);
         const take = Number(limit);
 
-        const where: any = { userId: req.userId };
+        const where: any = {
+            userId: req.userId,
+            parentId: req.query.parentId === 'any' ? undefined : (req.query.parentId || null)
+        };
 
         const status = req.query.status as string;
         const priority = req.query.priority as string;
@@ -74,6 +80,14 @@ export const getTasks = async (req: AuthRequest, res: Response) => {
                 where,
                 skip,
                 take,
+                include: {
+                    subTasks: {
+                        select: {
+                            id: true,
+                            status: true
+                        }
+                    }
+                } as any,
                 orderBy: { createdAt: 'desc' } as any
             }),
             prisma.task.count({ where })
@@ -96,7 +110,7 @@ export const getTasks = async (req: AuthRequest, res: Response) => {
 export const updateTask = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { title, description, status, priority, cveId, dueDate, reminderTime } = req.body;
+        const { title, description, status, priority, cveId, dueDate, reminderTime, parentId } = req.body;
 
         // Auto-set reminderTime to 1 hour before dueDate if not provided
         let computedReminderTime = reminderTime ? new Date(reminderTime) : undefined;
@@ -111,6 +125,7 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
             status: status as Status,
             priority: priority as Priority,
             cveId,
+            parentId: parentId === undefined ? undefined : (parentId || null),
             ...(parsedDueDate && { dueDate: parsedDueDate }),
             ...(computedReminderTime && { reminderTime: computedReminderTime, isNotified: false }),
             ...(req.file && {
