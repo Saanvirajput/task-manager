@@ -185,3 +185,54 @@ export const removeMember = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ error: 'Failed to remove member' });
     }
 };
+
+export const updateMemberRole = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id: workspaceId, userId: targetUserId } = req.params;
+        const { role } = req.body;
+
+        if (!role || ![ROLES.ADMIN, ROLES.MEMBER, ROLES.VIEWER].includes(role)) {
+            return res.status(400).json({ error: 'Invalid role. Must be ADMIN, MEMBER, or VIEWER' });
+        }
+
+        // Check requester is ADMIN
+        const requester = await prisma.workspaceMember.findUnique({
+            where: {
+                workspaceId_userId: {
+                    workspaceId,
+                    userId: req.userId!
+                }
+            }
+        });
+
+        if (!requester || requester.role !== ROLES.ADMIN) {
+            return res.status(403).json({ error: 'Only admins can change roles' });
+        }
+
+        // Prevent demoting the owner
+        const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+        if (workspace?.ownerId === targetUserId && role !== ROLES.ADMIN) {
+            return res.status(400).json({ error: 'Cannot demote the workspace owner' });
+        }
+
+        const updated = await prisma.workspaceMember.update({
+            where: {
+                workspaceId_userId: {
+                    workspaceId,
+                    userId: targetUserId
+                }
+            },
+            data: { role },
+            include: {
+                user: {
+                    select: { id: true, name: true, email: true }
+                }
+            }
+        });
+
+        res.json(updated);
+    } catch (error) {
+        console.error('Update Role Error:', error);
+        res.status(500).json({ error: 'Failed to update member role' });
+    }
+};

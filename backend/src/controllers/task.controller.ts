@@ -9,8 +9,7 @@ const prisma = new PrismaClient();
 
 export const createTask = async (req: AuthRequest, res: Response) => {
     try {
-        console.log('Creating task:', req.body, 'for user:', req.userId);
-        const { title, description, status, priority, cveId, dueDate, reminderTime, parentId, workspaceId } = req.body;
+        const { title, description, status, priority, cveId, dueDate, reminderTime, parentId, workspaceId, dependsOnIds, recurrence } = req.body;
 
         if (workspaceId) {
             const membership = await (prisma as any).workspaceMember.findUnique({
@@ -26,7 +25,6 @@ export const createTask = async (req: AuthRequest, res: Response) => {
             }
         }
 
-        // Auto-set reminderTime to 1 hour before dueDate if not provided
         let computedReminderTime = reminderTime ? new Date(reminderTime) : undefined;
         const parsedDueDate = dueDate ? new Date(dueDate) : undefined;
         if (parsedDueDate && !computedReminderTime) {
@@ -45,13 +43,19 @@ export const createTask = async (req: AuthRequest, res: Response) => {
             attachmentUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
             userId: req.userId!,
             parentId: parentId || null,
-            workspaceId: workspaceId || null
+            workspaceId: workspaceId || null,
+            recurrence: recurrence || null,
         };
 
+        // Connect dependencies if provided
+        if (dependsOnIds && Array.isArray(dependsOnIds) && dependsOnIds.length > 0) {
+            taskData.dependsOn = { connect: dependsOnIds.map((id: string) => ({ id })) };
+        }
+
         const task = await prisma.task.create({
-            data: taskData
+            data: taskData,
+            include: { dependsOn: { select: { id: true, title: true } } }
         });
-        console.log('Task created successfully:', task.id);
         res.status(201).json(task);
     } catch (error) {
         console.error('Error creating task:', error);
@@ -113,10 +117,13 @@ export const getTasks = async (req: AuthRequest, res: Response) => {
                 take,
                 include: {
                     subTasks: {
-                        select: {
-                            id: true,
-                            status: true
-                        }
+                        select: { id: true, status: true }
+                    },
+                    dependsOn: {
+                        select: { id: true, title: true, status: true }
+                    },
+                    dependedBy: {
+                        select: { id: true, title: true, status: true }
                     }
                 } as any,
                 orderBy: { createdAt: 'desc' } as any
@@ -141,9 +148,8 @@ export const getTasks = async (req: AuthRequest, res: Response) => {
 export const updateTask = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { title, description, status, priority, cveId, dueDate, reminderTime, parentId } = req.body;
+        const { title, description, status, priority, cveId, dueDate, reminderTime, parentId, dependsOnIds, recurrence } = req.body;
 
-        // Auto-set reminderTime to 1 hour before dueDate if not provided
         let computedReminderTime = reminderTime ? new Date(reminderTime) : undefined;
         const parsedDueDate = dueDate ? new Date(dueDate) : undefined;
         if (parsedDueDate && !computedReminderTime) {
@@ -165,9 +171,14 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
             }),
         };
 
-        // If task is marked DONE, reset overdue flag
+        if (recurrence !== undefined) {
+            updateData.recurrence = recurrence || null;
+        }
+
+        // If task is marked DONE, set completedAt and handle recurrence
         if (status === 'DONE') {
             updateData.isOverdueNotified = true;
+            updateData.completedAt = new Date();
         }
 
         const taskToUpdate: any = await prisma.task.findUnique({ where: { id: id as string } });
@@ -191,18 +202,60 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
             }
         }
 
+        // Handle dependency updates
+        if (dependsOnIds !== undefined && Array.isArray(dependsOnIds)) {
+            updateData.dependsOn = {
+                set: dependsOnIds.map((depId: string) => ({ id: depId }))
+            };
+        }
+
         await prisma.task.update({
             where: { id: id as string },
             data: updateData
         });
 
-        const updatedTask = await prisma.task.findUnique({ where: { id: id as string } });
+        // Auto-create next recurring task on completion
+        if (status === 'DONE' && taskToUpdate.recurrence && taskToUpdate.status !== 'DONE') {
+            const nextDue = calculateNextOccurrence(taskToUpdate.dueDate, taskToUpdate.recurrence);
+            await prisma.task.create({
+                data: {
+                    title: taskToUpdate.title,
+                    description: taskToUpdate.description,
+                    priority: taskToUpdate.priority,
+                    status: 'TODO',
+                    userId: taskToUpdate.userId,
+                    workspaceId: taskToUpdate.workspaceId,
+                    recurrence: taskToUpdate.recurrence,
+                    dueDate: nextDue,
+                    reminderTime: nextDue ? new Date(nextDue.getTime() - 60 * 60 * 1000) : null,
+                }
+            });
+        }
+
+        const updatedTask = await prisma.task.findUnique({
+            where: { id: id as string },
+            include: {
+                dependsOn: { select: { id: true, title: true, status: true } },
+                dependedBy: { select: { id: true, title: true, status: true } }
+            } as any
+        });
         res.json(updatedTask);
     } catch (error) {
         console.error('Update Error:', error);
         res.status(500).json({ error: 'Failed to update task' });
     }
 };
+
+function calculateNextOccurrence(currentDue: Date | null, recurrence: string): Date | null {
+    const base = currentDue ? new Date(currentDue) : new Date();
+    switch (recurrence) {
+        case 'DAILY': base.setDate(base.getDate() + 1); break;
+        case 'WEEKLY': base.setDate(base.getDate() + 7); break;
+        case 'MONTHLY': base.setMonth(base.getMonth() + 1); break;
+        default: return null;
+    }
+    return base;
+}
 
 export const extractTasksFromPdf = async (req: AuthRequest, res: Response) => {
     try {

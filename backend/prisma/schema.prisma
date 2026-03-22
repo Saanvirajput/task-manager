@@ -53,12 +53,21 @@ model Task {
   parent            Task?          @relation("SubTasks", fields: [parentId], references: [id], onDelete: Cascade)
   subTasks          Task[]         @relation("SubTasks")
 
+  // Task Dependencies (Phase 2)
+  dependsOn         Task[]         @relation("TaskDependencies")
+  dependedBy        Task[]         @relation("TaskDependencies")
+
+  // Recurring Tasks (Phase 2)
+  recurrence        String?        // "DAILY" | "WEEKLY" | "MONTHLY" | null
+  nextOccurrence    DateTime?
+
   @@index([userId])
   @@index([status])
   @@index([createdAt])
   @@index([parentId])
   @@index([workspaceId])
 }
+
 
 model Workspace {
   id        String           @id @default(uuid())

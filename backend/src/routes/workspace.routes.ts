@@ -11,5 +11,6 @@ router.get('/my', workspaceController.getMyWorkspaces);
 router.get('/:id', workspaceController.getWorkspaceById);
 router.post('/:id/invite', workspaceController.inviteMember);
 router.delete('/:id/members/:userId', workspaceController.removeMember);
+router.put('/:id/members/:userId/role', workspaceController.updateMemberRole);
 
 export default router;

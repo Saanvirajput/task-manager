@@ -11,6 +11,7 @@ import {
     Layout
 } from 'lucide-react';
 import CreateWorkspaceModal from './CreateWorkspaceModal';
+import WorkspaceSettingsModal from './WorkspaceSettingsModal';
 
 interface Workspace {
     id: string;
@@ -28,6 +29,8 @@ export default function WorkspaceSwitcher({ onWorkspaceChange, activeWorkspaceId
     const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [settingsWorkspaceId, setSettingsWorkspaceId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -95,24 +98,38 @@ export default function WorkspaceSwitcher({ onWorkspaceChange, activeWorkspaceId
                                 </div>
                             </button>
 
-                            {/* Workspace Options */}
                             {workspaces.map((workspace) => (
-                                <button
-                                    key={workspace.id}
-                                    onClick={() => {
-                                        onWorkspaceChange(workspace.id);
-                                        setIsOpen(false);
-                                    }}
-                                    className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors mt-1 ${activeWorkspaceId === workspace.id ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-neutral-50 text-neutral-700'}`}
-                                >
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeWorkspaceId === workspace.id ? 'bg-indigo-100 text-indigo-600' : 'bg-neutral-100 text-neutral-400'}`}>
-                                        <Users size={16} />
-                                    </div>
-                                    <div className="text-left overflow-hidden">
-                                        <p className="text-sm font-semibold truncate">{workspace.name}</p>
-                                        <p className="text-[10px] opacity-70 uppercase">{workspace.myRole}</p>
-                                    </div>
-                                </button>
+                                <div key={workspace.id} className="flex items-center mt-1">
+                                    <button
+                                        onClick={() => {
+                                            onWorkspaceChange(workspace.id);
+                                            setIsOpen(false);
+                                        }}
+                                        className={`flex-1 flex items-center gap-3 p-2 rounded-lg transition-colors ${activeWorkspaceId === workspace.id ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-neutral-50 text-neutral-700'}`}
+                                    >
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeWorkspaceId === workspace.id ? 'bg-indigo-100 text-indigo-600' : 'bg-neutral-100 text-neutral-400'}`}>
+                                            <Users size={16} />
+                                        </div>
+                                        <div className="text-left overflow-hidden">
+                                            <p className="text-sm font-semibold truncate">{workspace.name}</p>
+                                            <p className="text-[10px] opacity-70 uppercase">{workspace.myRole}</p>
+                                        </div>
+                                    </button>
+                                    {workspace.myRole === 'ADMIN' && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSettingsWorkspaceId(workspace.id);
+                                                setIsSettingsOpen(true);
+                                                setIsOpen(false);
+                                            }}
+                                            className="p-1.5 text-neutral-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all ml-1"
+                                            title="Workspace Settings"
+                                        >
+                                            <Settings size={14} />
+                                        </button>
+                                    )}
+                                </div>
                             ))}
                         </div>
 
@@ -141,6 +158,14 @@ export default function WorkspaceSwitcher({ onWorkspaceChange, activeWorkspaceId
                         }}
                     />
                 </>
+            )}
+
+            {isSettingsOpen && settingsWorkspaceId && (
+                <WorkspaceSettingsModal
+                    isOpen={isSettingsOpen}
+                    onClose={() => { setIsSettingsOpen(false); setSettingsWorkspaceId(null); }}
+                    workspaceId={settingsWorkspaceId}
+                />
             )}
         </div>
     );

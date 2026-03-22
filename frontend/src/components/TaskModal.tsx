@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { X, Plus, Trash2, CheckCircle2, Circle } from 'lucide-react';
+import { X, Plus, Trash2, CheckCircle2, Circle, RefreshCw, Link2 } from 'lucide-react';
 
-export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceId }: any) {
+export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceId, availableTasks = [] }: any) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [status, setStatus] = useState('TODO');
@@ -15,6 +15,8 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceI
     const [attachment, setAttachment] = useState<File | null>(null);
     const [subTasks, setSubTasks] = useState<any[]>([]);
     const [newSubTaskTitle, setNewSubTaskTitle] = useState('');
+    const [recurrence, setRecurrence] = useState('');
+    const [selectedDependencies, setSelectedDependencies] = useState<string[]>([]);
 
     useEffect(() => {
         if (task) {
@@ -26,6 +28,8 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceI
             setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : '');
             setReminderTime(task.reminderTime ? new Date(task.reminderTime).toISOString().slice(0, 16) : '');
             setAttachment(null);
+            setRecurrence(task.recurrence || '');
+            setSelectedDependencies(task.dependsOn?.map((d: any) => d.id) || []);
             fetchSubTasks(task.id);
         } else {
             setTitle('');
@@ -37,6 +41,8 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceI
             setReminderTime('');
             setAttachment(null);
             setSubTasks([]);
+            setRecurrence('');
+            setSelectedDependencies([]);
         }
     }, [task]);
 
@@ -100,6 +106,8 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceI
             if (reminderTime) formData.append('reminderTime', new Date(reminderTime).toISOString());
             if (attachment) formData.append('attachment', attachment);
             if (workspaceId && !task) formData.append('workspaceId', workspaceId);
+            if (recurrence) formData.append('recurrence', recurrence);
+            selectedDependencies.forEach(id => formData.append('dependsOnIds', id));
 
             if (task) {
                 await api.put(`/tasks/${task.id}`, formData, {
@@ -174,6 +182,60 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task, workspaceI
                     <div>
                         <label className="block text-sm font-semibold text-neutral-800 mb-1">PDF Attachment (Task info/CVE details)</label>
                         <input type="file" onChange={(e) => setAttachment(e.target.files?.[0] || null)} accept=".pdf" className="w-full text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 cursor-pointer" />
+                    </div>
+                    {/* Recurrence */}
+                    <div>
+                        <label className="block text-sm font-semibold text-neutral-800 mb-1 flex items-center gap-1.5">
+                            <RefreshCw size={14} /> Recurrence
+                        </label>
+                        <select value={recurrence} onChange={(e) => setRecurrence(e.target.value)} className="w-full appearance-none">
+                            <option value="">None (One-time)</option>
+                            <option value="DAILY">Daily</option>
+                            <option value="WEEKLY">Weekly</option>
+                            <option value="MONTHLY">Monthly</option>
+                        </select>
+                        {recurrence && (
+                            <p className="text-xs text-purple-500 mt-1 font-medium">🔁 A new task will be auto-created when this one is completed</p>
+                        )}
+                    </div>
+                    {/* Dependencies Selection */}
+                    <div>
+                        <label className="block text-sm font-semibold text-neutral-800 mb-1 flex items-center gap-1.5">
+                            <Link2 size={14} /> Blocked By (Dependencies)
+                        </label>
+                        <select
+                            multiple
+                            value={selectedDependencies}
+                            onChange={(e) => {
+                                const options = Array.from(e.target.selectedOptions, option => option.value);
+                                setSelectedDependencies(options);
+                            }}
+                            className="w-full text-sm rounded-lg border-neutral-200 focus:ring-indigo-500 min-h-[80px]"
+                        >
+                            {availableTasks
+                                .filter((t: any) => t.id !== task?.id) // Prevent self-dependency
+                                .map((t: any) => (
+                                    <option key={t.id} value={t.id} className="p-1">
+                                        {t.title} ({t.status.replace('_', ' ')})
+                                    </option>
+                                ))}
+                        </select>
+                        <p className="text-xs text-neutral-400 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select multiple tasks</p>
+
+                        {/* Display existing dependencies nicely if any are selected */}
+                        {selectedDependencies.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                {selectedDependencies.map(depId => {
+                                    const depInfo = availableTasks.find((t: any) => t.id === depId);
+                                    if (!depInfo) return null;
+                                    return (
+                                        <span key={depId} className={`text-[10px] font-bold px-2 py-1 rounded-lg ${depInfo.status === 'DONE' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
+                                            {depInfo.status === 'DONE' ? '✅' : '⏳'} {depInfo.title}
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                     <button type="submit" className="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-md shadow-lg transition-all mt-4">
                         {task ? 'Update' : 'Create'} Task

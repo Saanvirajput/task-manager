@@ -10,12 +10,13 @@ import {
 import {
     LayoutDashboard, ListTodo, CheckCircle2, Clock,
     Search, Plus, LogOut, ChevronLeft, ChevronRight,
-    Filter, Calendar, ArrowUpRight, FileText, Paperclip, Check
+    Filter, Calendar, ArrowUpRight, FileText, Paperclip, Check, BarChart3, Table2
 } from 'lucide-react';
 import TaskModal from '@/components/TaskModal';
 import ImportModal from '@/components/ImportModal';
 import NotificationBell from '@/components/NotificationBell';
 import WorkspaceSwitcher from '@/components/WorkspaceSwitcher';
+import GanttChart from '@/components/GanttChart';
 import confetti from 'canvas-confetti';
 
 export default function DashboardPage() {
@@ -34,6 +35,7 @@ export default function DashboardPage() {
     const [editingTask, setEditingTask] = useState(null);
     const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
     const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'table' | 'gantt'>('table');
 
     const fetchDashboardData = useCallback(async () => {
         try {
@@ -198,140 +200,167 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Task Table Section */}
-                <div className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden">
-                    <div className="p-4 border-b border-neutral-200 bg-neutral-50 flex flex-wrap gap-4 items-center justify-between">
-                        <div className="relative flex-1 min-w-[300px]">
-                            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                            <input
-                                type="text"
-                                placeholder="Search tasks..."
-                                className="w-full pl-10 pr-4 py-2 ring-1 ring-neutral-200 focus:ring-indigo-500 outline-none rounded-lg"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            <select value={status} onChange={(e) => setStatus(e.target.value)} className="text-sm font-medium p-2 rounded-lg border border-neutral-200 outline-none focus:ring-1 focus:ring-indigo-500">
-                                <option value="">All Status</option>
-                                <option value="TODO">To Do</option>
-                                <option value="IN_PROGRESS">In Progress</option>
-                                <option value="DONE">Done</option>
-                            </select>
-                            <select value={priority} onChange={(e) => setPriority(e.target.value)} className="text-sm font-medium p-2 rounded-lg border border-neutral-200 outline-none focus:ring-1 focus:ring-indigo-500">
-                                <option value="">All Priority</option>
-                                <option value="LOW">Low</option>
-                                <option value="MEDIUM">Medium</option>
-                                <option value="HIGH">High</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="bg-neutral-50 text-neutral-500 font-bold uppercase text-xs tracking-wider border-b border-neutral-200">
-                                <th className="px-6 py-4 w-12 text-center">Done</th>
-                                <th className="px-6 py-4">Title</th>
-                                <th className="px-6 py-4">CVE / Ref</th>
-                                <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4">Priority</th>
-                                <th className="px-6 py-4">Due Date</th>
-                                <th className="px-6 py-4 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-100">
-                            {tasks.map((task: any) => (
-                                <tr key={task.id} className="hover:bg-neutral-50/50 transition-colors">
-                                    <td className="px-6 py-4 text-center">
-                                        <button
-                                            onClick={() => toggleTaskStatus(task)}
-                                            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mx-auto transition-all ${task.status === 'DONE'
-                                                ? 'bg-green-500 border-green-500 text-white shadow-sm'
-                                                : 'border-neutral-300 hover:border-brand-500 bg-white hover:bg-neutral-50'
-                                                }`}
-                                            title={task.status === 'DONE' ? 'Mark as Todo' : 'Mark as Done'}
-                                        >
-                                            {task.status === 'DONE' && <Check size={14} strokeWidth={4} />}
-                                        </button>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className={`font-bold transition-all duration-500 flex items-center gap-2 ${task.status === 'DONE' ? 'text-neutral-400 line-through' : 'text-neutral-800'
-                                            }`}>
-                                            {task.title}
-                                            {task.subTasks && task.subTasks.length > 0 && (
-                                                <span className="text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-full font-medium ml-1">
-                                                    {task.subTasks.filter((s: any) => s.status === 'DONE').length}/{task.subTasks.length}
-                                                </span>
-                                            )}
-                                            {task.attachmentUrl && (
-                                                <a
-                                                    href={`${(process.env.NEXT_PUBLIC_API_URL || '').replace('/api', '')}${task.attachmentUrl}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className={`hover:text-brand-600 transition-colors ${task.status === 'DONE' ? 'text-neutral-300' : 'text-brand-500'}`}
-                                                    title={task.attachmentName}
-                                                >
-                                                    <Paperclip size={14} />
-                                                </a>
-                                            )}
-                                        </div>
-                                        {task.description && (
-                                            <div className={`text-xs truncate max-w-[200px] transition-all duration-500 ${task.status === 'DONE' ? 'text-neutral-300 line-through' : 'text-neutral-400'
-                                                }`}>
-                                                {task.description}
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {task.cveId ? (
-                                            <span className="flex items-center gap-1 text-xs font-bold text-neutral-600 bg-neutral-100 px-2 py-1 rounded w-fit">
-                                                <FileText size={12} /> {task.cveId}
-                                            </span>
-                                        ) : (
-                                            <span className="text-neutral-300 text-xs">-</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${task.status === 'DONE' ? 'bg-green-100 text-green-700' :
-                                            task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                                                'bg-orange-100 text-orange-700'
-                                            }`}>
-                                            {task.status.replace('_', ' ')}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${task.priority === 'HIGH' ? 'bg-red-100 text-red-700' :
-                                            task.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
-                                                'bg-neutral-100 text-neutral-700'
-                                            }`}>
-                                            {task.priority}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm font-medium text-neutral-500">
-                                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '—'}
-                                    </td>
-                                    <td className="px-6 py-4 text-right space-x-2">
-                                        <button onClick={() => { setEditingTask(task); setIsModalOpen(true); }} className="text-indigo-500 font-bold text-sm hover:underline">Edit</button>
-                                        <button onClick={() => setDeletingTaskId(task.id)} className="text-red-500 font-bold text-sm hover:underline">Delete</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-
-                    {/* Pagination */}
-                    <div className="p-4 border-t border-neutral-200 bg-neutral-50 flex items-center justify-between">
-                        <span className="text-sm text-neutral-500 font-medium">Page {page} of {totalPages}</span>
-                        <div className="flex gap-2">
-                            <button disabled={page === 1} onClick={() => setPage(page - 1)} className="p-1 border border-neutral-200 rounded-md disabled:opacity-50 hover:bg-white transition-colors">
-                                <ChevronLeft size={20} />
-                            </button>
-                            <button disabled={page === totalPages} onClick={() => setPage(page + 1)} className="p-1 border border-neutral-200 rounded-md disabled:opacity-50 hover:bg-white transition-colors">
-                                <ChevronRight size={20} />
-                            </button>
-                        </div>
+                {/* View Toggle + Task Section */}
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center bg-white border border-neutral-200 rounded-lg p-1 shadow-sm">
+                        <button
+                            onClick={() => setViewMode('table')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'table' ? 'bg-indigo-500 text-white shadow' : 'text-neutral-500 hover:bg-neutral-50'}`}
+                        >
+                            <Table2 size={14} /> Table
+                        </button>
+                        <button
+                            onClick={() => setViewMode('gantt')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'gantt' ? 'bg-indigo-500 text-white shadow' : 'text-neutral-500 hover:bg-neutral-50'}`}
+                        >
+                            <BarChart3 size={14} /> Gantt
+                        </button>
                     </div>
                 </div>
+
+                {viewMode === 'gantt' ? (
+                    <GanttChart
+                        tasks={tasks}
+                        onTaskClick={(t: any) => { setEditingTask(t); setIsModalOpen(true); }}
+                    />
+                ) : (
+                    <div className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-neutral-200 bg-neutral-50 flex flex-wrap gap-4 items-center justify-between">
+                            <div className="relative flex-1 min-w-[300px]">
+                                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search tasks..."
+                                    className="w-full pl-10 pr-4 py-2 ring-1 ring-neutral-200 focus:ring-indigo-500 outline-none rounded-lg"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                <select value={status} onChange={(e) => setStatus(e.target.value)} className="text-sm font-medium p-2 rounded-lg border border-neutral-200 outline-none focus:ring-1 focus:ring-indigo-500">
+                                    <option value="">All Status</option>
+                                    <option value="TODO">To Do</option>
+                                    <option value="IN_PROGRESS">In Progress</option>
+                                    <option value="DONE">Done</option>
+                                </select>
+                                <select value={priority} onChange={(e) => setPriority(e.target.value)} className="text-sm font-medium p-2 rounded-lg border border-neutral-200 outline-none focus:ring-1 focus:ring-indigo-500">
+                                    <option value="">All Priority</option>
+                                    <option value="LOW">Low</option>
+                                    <option value="MEDIUM">Medium</option>
+                                    <option value="HIGH">High</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="bg-neutral-50 text-neutral-500 font-bold uppercase text-xs tracking-wider border-b border-neutral-200">
+                                    <th className="px-6 py-4 w-12 text-center">Done</th>
+                                    <th className="px-6 py-4">Title</th>
+                                    <th className="px-6 py-4">CVE / Ref</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4">Priority</th>
+                                    <th className="px-6 py-4">Due Date</th>
+                                    <th className="px-6 py-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-neutral-100">
+                                {tasks.map((task: any) => (
+                                    <tr key={task.id} className="hover:bg-neutral-50/50 transition-colors">
+                                        <td className="px-6 py-4 text-center">
+                                            <button
+                                                onClick={() => toggleTaskStatus(task)}
+                                                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mx-auto transition-all ${task.status === 'DONE'
+                                                    ? 'bg-green-500 border-green-500 text-white shadow-sm'
+                                                    : 'border-neutral-300 hover:border-brand-500 bg-white hover:bg-neutral-50'
+                                                    }`}
+                                                title={task.status === 'DONE' ? 'Mark as Todo' : 'Mark as Done'}
+                                            >
+                                                {task.status === 'DONE' && <Check size={14} strokeWidth={4} />}
+                                            </button>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className={`font-bold transition-all duration-500 flex items-center gap-2 ${task.status === 'DONE' ? 'text-neutral-400 line-through' : 'text-neutral-800'}`}>
+                                                {task.title}
+                                                {task.subTasks && task.subTasks.length > 0 && (
+                                                    <span className="text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-full font-medium ml-1">
+                                                        {task.subTasks.filter((s: any) => s.status === 'DONE').length}/{task.subTasks.length}
+                                                    </span>
+                                                )}
+                                                {task.recurrence && (
+                                                    <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded-full font-bold ml-1">🔁 {task.recurrence}</span>
+                                                )}
+                                                {task.dependsOn && task.dependsOn.length > 0 && (
+                                                    <span className="text-[10px] bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded-full font-bold ml-1">⛓️ {task.dependsOn.length}</span>
+                                                )}
+                                                {task.attachmentUrl && (
+                                                    <a
+                                                        href={`${(process.env.NEXT_PUBLIC_API_URL || '').replace('/api', '')}${task.attachmentUrl}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className={`hover:text-brand-600 transition-colors ${task.status === 'DONE' ? 'text-neutral-300' : 'text-brand-500'}`}
+                                                        title={task.attachmentName}
+                                                    >
+                                                        <Paperclip size={14} />
+                                                    </a>
+                                                )}
+                                            </div>
+                                            {task.description && (
+                                                <div className={`text-xs truncate max-w-[200px] transition-all duration-500 ${task.status === 'DONE' ? 'text-neutral-300 line-through' : 'text-neutral-400'}`}>
+                                                    {task.description}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {task.cveId ? (
+                                                <span className="flex items-center gap-1 text-xs font-bold text-neutral-600 bg-neutral-100 px-2 py-1 rounded w-fit">
+                                                    <FileText size={12} /> {task.cveId}
+                                                </span>
+                                            ) : (
+                                                <span className="text-neutral-300 text-xs">-</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${task.status === 'DONE' ? 'bg-green-100 text-green-700' :
+                                                task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-orange-100 text-orange-700'
+                                                }`}>
+                                                {task.status.replace('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${task.priority === 'HIGH' ? 'bg-red-100 text-red-700' :
+                                                task.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-neutral-100 text-neutral-700'
+                                                }`}>
+                                                {task.priority}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm font-medium text-neutral-500">
+                                            {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '—'}
+                                        </td>
+                                        <td className="px-6 py-4 text-right space-x-2">
+                                            <button onClick={() => { setEditingTask(task); setIsModalOpen(true); }} className="text-indigo-500 font-bold text-sm hover:underline">Edit</button>
+                                            <button onClick={() => setDeletingTaskId(task.id)} className="text-red-500 font-bold text-sm hover:underline">Delete</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        <div className="p-4 border-t border-neutral-200 bg-neutral-50 flex items-center justify-between">
+                            <span className="text-sm text-neutral-500 font-medium">Page {page} of {totalPages}</span>
+                            <div className="flex gap-2">
+                                <button disabled={page === 1} onClick={() => setPage(page - 1)} className="p-1 border border-neutral-200 rounded-md disabled:opacity-50 hover:bg-white transition-colors">
+                                    <ChevronLeft size={20} />
+                                </button>
+                                <button disabled={page === totalPages} onClick={() => setPage(page + 1)} className="p-1 border border-neutral-200 rounded-md disabled:opacity-50 hover:bg-white transition-colors">
+                                    <ChevronRight size={20} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
 
             <TaskModal
@@ -342,6 +371,7 @@ export default function DashboardPage() {
                 }}
                 onSuccess={fetchDashboardData}
                 task={editingTask}
+                availableTasks={tasks}
                 workspaceId={activeWorkspaceId}
             />
 
@@ -352,7 +382,6 @@ export default function DashboardPage() {
                 workspaceId={activeWorkspaceId}
             />
 
-            {/* Custom Delete Confirmation Modal */}
             {deletingTaskId && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-neutral-200 animate-in fade-in zoom-in duration-200">
