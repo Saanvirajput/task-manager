@@ -17,22 +17,30 @@ router.post('/mfa/setup', authMiddleware, setupMfa);
 router.post('/mfa/verify', authMiddleware, verifyMfa);
 router.put('/calendar-sync', authMiddleware, updateCalendarSync);
 
-// Google SSO routes
-router.get('/google', passport.authenticate('google', {
-    scope: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.events'],
-    accessType: 'offline',
-    prompt: 'consent'
-}));
+// Google SSO routes (guarded — only active if OAuth env vars are configured)
+const isGoogleConfigured = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
-router.get('/google/callback',
-    passport.authenticate('google', { session: false, failureRedirect: '/login?error=sso-failed' }),
-    (req: any, res) => {
-        const accessToken = generateAccessToken(req.user.id);
-        const refreshToken = generateRefreshToken(req.user.id);
+router.get('/google', (req, res, next) => {
+    if (!isGoogleConfigured) {
+        return res.status(503).json({ error: 'Google SSO is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on Railway.' });
+    }
+    passport.authenticate('google', {
+        scope: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.events'],
+        accessType: 'offline',
+        prompt: 'consent'
+    })(req, res, next);
+});
 
+router.get('/google/callback', (req, res, next) => {
+    if (!isGoogleConfigured) {
+        return res.status(503).json({ error: 'Google SSO is not configured.' });
+    }
+    passport.authenticate('google', { session: false, failureRedirect: '/login?error=sso-failed' })(req, res, () => {
+        const accessToken = generateAccessToken((req as any).user.id);
+        const refreshToken = generateRefreshToken((req as any).user.id);
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         res.redirect(`${frontendUrl}/auth/callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
-    }
-);
+    });
+});
 
 export default router;
