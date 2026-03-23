@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import api from '@/lib/api';
-import { X, Upload, FileText, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { X, Upload, FileText, CheckCircle2, Loader2, AlertCircle, ShieldPlus } from 'lucide-react';
 
 interface ExtractedTask {
     title: string;
@@ -10,7 +10,7 @@ interface ExtractedTask {
     priority: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
-export default function ImportModal({ isOpen, onClose, onSuccess, workspaceId }: any) {
+export default function ImportModal({ isOpen, onClose, onSuccess, teamId }: any) {
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
     const [previewTasks, setPreviewTasks] = useState<ExtractedTask[]>([]);
@@ -37,12 +37,10 @@ export default function ImportModal({ isOpen, onClose, onSuccess, workspaceId }:
             formData.append('attachment', file);
             const res = await api.post('/tasks/extract-pdf', formData);
 
-            // Map the schedule back to the tasks
             const planTasks = res.data.tasks || [];
             const schedule = res.data.schedule || [];
 
             const tasksWithSchedule = planTasks.map((task: any) => {
-                // Find if this task is scheduled for a specific day
                 const scheduledDay = schedule.find((s: any) =>
                     s.tasks.some((st: string) => st.toLowerCase() === task.title.toLowerCase())
                 );
@@ -61,7 +59,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess, workspaceId }:
             setStatus('PREVIEW');
         } catch (err) {
             console.error(err);
-            setError('Failed to extract tasks. Ensure the PDF has readable text.');
+            setError('Extraction failed. Verify document eligibility.');
             setStatus('IDLE');
         } finally {
             setLoading(false);
@@ -73,11 +71,11 @@ export default function ImportModal({ isOpen, onClose, onSuccess, workspaceId }:
         setLoading(true);
         setStatus('IMPORTING');
         try {
-            // Sequential import for simplicity and to avoid rate limits/concurency issues
             for (const idx of Array.from(selectedIndices)) {
                 await api.post('/tasks', {
                     ...previewTasks[idx],
-                    workspaceId: workspaceId || undefined
+                    teamId: teamId || undefined,
+                    visibility: 'TEAM'
                 });
             }
             setStatus('SUCCESS');
@@ -88,7 +86,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess, workspaceId }:
             }, 1500);
         } catch (err) {
             console.error(err);
-            setError('Import failed midway. Please check your dashboard.');
+            setError('Import protocol interrupted.');
         } finally {
             setLoading(false);
         }
@@ -123,125 +121,123 @@ export default function ImportModal({ isOpen, onClose, onSuccess, workspaceId }:
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-md z-[60] flex items-center justify-center p-4 transition-all duration-300">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[90vh] overflow-hidden border border-neutral-200 animate-in fade-in zoom-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-xl z-[60] flex items-center justify-center p-4 transition-all duration-500">
+            <div className="bg-white rounded-[2rem] shadow-2xl max-w-2xl w-full flex flex-col max-h-[90vh] overflow-hidden border border-neutral-200 animate-in fade-in zoom-in slide-in-from-bottom-8 duration-500">
                 {/* Header */}
-                <div className="p-6 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
+                <div className="p-8 border-b border-neutral-100 flex justify-between items-center bg-white">
                     <div>
-                        <h2 className="text-xl font-black text-neutral-800 tracking-tight flex items-center gap-2">
-                            <Upload className="text-brand-500" size={24} />
-                            {status === 'SUCCESS' ? 'Import Complete!' : 'AI PDF Task Importer'}
+                        <h2 className="text-2xl font-black text-neutral-900 tracking-tighter flex items-center gap-3">
+                            <ShieldPlus className="text-brand-500" size={28} />
+                            {status === 'SUCCESS' ? 'Mission Success' : 'AI Intel Ingestion'}
                         </h2>
-                        <p className="text-sm text-neutral-500 font-medium">Auto-schedule tasks from any document ✨</p>
+                        <p className="text-[10px] text-neutral-400 font-black uppercase tracking-widest mt-1">Autonomous Task Extraction Protocol ✨</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-neutral-200 rounded-full transition-all group">
-                        <X size={20} className="text-neutral-400 group-hover:text-neutral-600" />
+                    <button onClick={onClose} className="p-3 hover:bg-neutral-100 rounded-2xl transition-all">
+                        <X size={20} className="text-neutral-400" />
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-8">
+                <div className="flex-1 overflow-y-auto p-10">
                     {status === 'IDLE' && (
-                        <div className="space-y-6">
-                            <div className="border-2 border-dashed border-neutral-200 rounded-2xl p-12 flex flex-col items-center justify-center bg-neutral-50/50 hover:bg-neutral-50 hover:border-brand-300 transition-all cursor-pointer group relative">
+                        <div className="space-y-8">
+                            <div className="border-4 border-dashed border-neutral-100 rounded-3xl p-16 flex flex-col items-center justify-center bg-neutral-50/30 hover:bg-white hover:border-brand-200 transition-all cursor-pointer group relative shadow-inner">
                                 <input type="file" onChange={handleFileChange} accept=".pdf" className="absolute inset-0 opacity-0 cursor-pointer" />
-                                <div className="w-16 h-16 bg-brand-50 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                    <FileText className="text-brand-500" size={32} />
+                                <div className="w-20 h-20 bg-brand-50 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-all shadow-sm">
+                                    <FileText className="text-brand-500" size={40} />
                                 </div>
-                                <h3 className="font-bold text-neutral-800 text-lg">{file ? file.name : 'Click to upload PDF'}</h3>
-                                <p className="text-neutral-400 text-sm font-medium">Max size: 5MB • .pdf format only</p>
+                                <h3 className="font-black text-neutral-800 text-xl tracking-tight">{file ? file.name : 'Drop Intel PDF Here'}</h3>
+                                <p className="text-neutral-400 text-xs font-black uppercase tracking-widest mt-2 px-6 py-1 bg-neutral-50 rounded-full">Encrypted Transport Active</p>
                             </div>
 
                             {file && (
-                                <button onClick={handleExtract} disabled={loading} className="w-full py-4 bg-brand-500 hover:bg-brand-600 text-white font-black rounded-xl shadow-xl shadow-brand-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 uppercase tracking-widest text-sm">
-                                    {loading ? <Loader2 className="animate-spin" size={20} /> : 'Start AI Extraction'}
+                                <button onClick={handleExtract} disabled={loading} className="w-full py-5 bg-black text-white font-black rounded-2xl shadow-2xl shadow-black/20 transition-all active:scale-95 flex items-center justify-center gap-3 uppercase tracking-widest text-sm">
+                                    {loading ? <Loader2 className="animate-spin" size={20} /> : 'Execute AI Parsing'}
                                 </button>
                             )}
                         </div>
                     )}
 
                     {status === 'EXTRACTING' && (
-                        <div className="py-20 flex flex-col items-center justify-center space-y-4">
+                        <div className="py-24 flex flex-col items-center justify-center space-y-6">
                             <div className="relative">
-                                <div className="w-16 h-16 border-4 border-brand-100 border-t-brand-500 rounded-full animate-spin"></div>
+                                <div className="w-20 h-20 border-4 border-brand-50 border-t-brand-500 rounded-full animate-spin"></div>
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <Loader2 className="text-brand-500 animate-pulse" size={24} />
+                                    <Loader2 className="text-brand-500 animate-pulse" size={32} />
                                 </div>
                             </div>
                             <div className="text-center">
-                                <h3 className="font-bold text-neutral-800">Reading your document...</h3>
-                                <p className="text-neutral-500 text-sm">Our AI is identifying tasks and priorities ✨</p>
+                                <h3 className="text-xl font-black text-neutral-900 tracking-tight italic">Analyzing Personnel Directives...</h3>
+                                <p className="text-[10px] text-neutral-400 font-black uppercase tracking-widest mt-2">Neural Net Integration Active ✨</p>
                             </div>
                         </div>
                     )}
 
                     {status === 'PREVIEW' && (
-                        <div className="space-y-6">
+                        <div className="space-y-8">
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <h3 className="font-black text-neutral-800 uppercase tracking-wider text-xs">Identified Tasks ({previewTasks.length})</h3>
-                                    <button onClick={toggleAll} className="text-[10px] font-bold text-brand-500 hover:text-brand-600 bg-brand-50 hover:bg-brand-100 px-2 py-1 rounded transition-colors uppercase tracking-wider">
-                                        {selectedIndices.size === previewTasks.length ? 'Deselect All' : 'Select All'}
+                                <div className="flex items-center gap-4">
+                                    <h3 className="font-black text-neutral-900 uppercase tracking-widest text-xs">Directives Identified ({previewTasks.length})</h3>
+                                    <button onClick={toggleAll} className="text-[10px] font-black text-brand-600 bg-brand-50 px-3 py-1.5 rounded-xl transition-all uppercase tracking-widest hover:shadow-md">
+                                        {selectedIndices.size === previewTasks.length ? 'Clear' : 'Check All'}
                                     </button>
                                 </div>
-                                <button onClick={reset} className="text-xs font-bold text-neutral-400 hover:text-red-500 transition-colors">Start Over</button>
+                                <button onClick={reset} className="text-[10px] font-black text-neutral-400 hover:text-red-500 transition-colors uppercase tracking-widest">Abort</button>
                             </div>
-                            <div className="border border-neutral-100 rounded-xl overflow-hidden divide-y divide-neutral-50">
+                            <div className="space-y-3">
                                 {previewTasks.map((task, idx) => (
-                                    <label key={idx} className={`p-4 hover:bg-neutral-50 transition-colors flex gap-4 cursor-pointer items-start border-l-4 ${selectedIndices.has(idx) ? 'bg-white border-brand-500' : 'bg-neutral-50/30 border-transparent text-neutral-400 opacity-60'}`}>
-                                        <div className="pt-1">
+                                    <label key={idx} className={`p-5 rounded-2xl transition-all flex gap-5 cursor-pointer items-start border-2 ${selectedIndices.has(idx) ? 'bg-white border-brand-500 shadow-lg' : 'bg-neutral-50/50 border-transparent text-neutral-400 opacity-60'}`}>
+                                        <div className="pt-1.5">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedIndices.has(idx)}
                                                 onChange={() => toggleSelection(idx)}
-                                                className="w-4 h-4 text-brand-500 rounded border-neutral-300 focus:ring-brand-500 focus:ring-offset-0 cursor-pointer"
+                                                className="w-5 h-5 text-brand-500 rounded-lg border-neutral-300 focus:ring-0 cursor-pointer"
                                             />
                                         </div>
                                         <div className="flex-1">
-                                            <div className="font-bold">{task.title}</div>
-                                            <div className="text-xs text-neutral-400 line-clamp-1">{task.description || 'No description extracted.'}</div>
+                                            <div className="font-black text-neutral-800 tracking-tight">{task.title}</div>
+                                            <div className="text-[10px] font-medium leading-relaxed line-clamp-2 mt-1 uppercase tracking-tight">{task.description || 'No detailed directive found.'}</div>
                                         </div>
-                                        <div className="flex items-center">
-                                            <span className={`px-2 py-0.5 rounded text-[10px] font-black tracking-tighter uppercase ${task.priority === 'HIGH' ? 'bg-red-50 text-red-600' :
-                                                task.priority === 'MEDIUM' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
-                                                }`}>
-                                                {task.priority}
-                                            </span>
-                                        </div>
+                                        <span className={`px-3 py-1 rounded-xl text-[10px] font-black tracking-widest uppercase border ${task.priority === 'HIGH' ? 'bg-red-50 text-red-600 border-red-100' :
+                                            task.priority === 'MEDIUM' ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-brand-50 text-brand-600 border-brand-100'
+                                            }`}>
+                                            {task.priority}
+                                        </span>
                                     </label>
                                 ))}
                             </div>
-                            <button onClick={handleImport} disabled={loading || selectedIndices.size === 0} className={`w-full py-4 text-white font-black rounded-xl shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 uppercase tracking-widest text-sm ${selectedIndices.size === 0 ? 'bg-neutral-300 cursor-not-allowed shadow-none text-neutral-500' : 'bg-neutral-900 hover:bg-black'}`}>
-                                {loading ? <Loader2 className="animate-spin" size={20} /> : `Import ${selectedIndices.size} Selected Task${selectedIndices.size === 1 ? '' : 's'}`}
+                            <button onClick={handleImport} disabled={loading || selectedIndices.size === 0} className={`w-full py-5 text-white font-black rounded-2xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3 uppercase tracking-widest text-sm ${selectedIndices.size === 0 ? 'bg-neutral-200 cursor-not-allowed text-neutral-400' : 'bg-black hover:shadow-brand-500/10'}`}>
+                                {loading ? <Loader2 className="animate-spin" size={20} /> : `Commit ${selectedIndices.size} Strategic Unit${selectedIndices.size === 1 ? '' : 's'}`}
                             </button>
                         </div>
                     )}
 
                     {status === 'IMPORTING' && (
-                        <div className="py-20 flex flex-col items-center justify-center space-y-4">
-                            <Loader2 className="text-brand-500 animate-spin" size={48} />
+                        <div className="py-24 flex flex-col items-center justify-center space-y-6">
+                            <Loader2 className="text-brand-500 animate-spin" size={60} />
                             <div className="text-center">
-                                <h3 className="font-bold text-neutral-800">Scheduling Tasks...</h3>
-                                <p className="text-neutral-500 text-sm">Syncing with your database 🔗</p>
+                                <h3 className="text-xl font-black text-neutral-900 tracking-tight">Syncing Operational Ledger...</h3>
+                                <p className="text-[10px] text-neutral-400 font-black uppercase tracking-widest mt-2">Database Integrity verified 🔗</p>
                             </div>
                         </div>
                     )}
 
                     {status === 'SUCCESS' && (
-                        <div className="py-16 flex flex-col items-center justify-center space-y-4">
-                            <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center animate-bounce">
-                                <CheckCircle2 className="text-green-500" size={48} />
+                        <div className="py-20 flex flex-col items-center justify-center space-y-6 text-center">
+                            <div className="w-24 h-24 bg-brand-50 rounded-[2rem] flex items-center justify-center animate-bounce shadow-xl">
+                                <CheckCircle2 className="text-brand-500" size={56} />
                             </div>
-                            <div className="text-center">
-                                <h3 className="font-black text-neutral-800 text-2xl">Awesome!</h3>
-                                <p className="text-neutral-500 font-medium">All tasks have been successfully scheduled.</p>
+                            <div>
+                                <h3 className="font-black text-neutral-900 text-3xl tracking-tighter">Strategic Victory</h3>
+                                <p className="text-neutral-500 font-bold uppercase tracking-widest text-[10px] mt-2">All Directives successfully Integrated.</p>
                             </div>
                         </div>
                     )}
 
                     {error && (
-                        <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm font-bold animate-shake">
-                            <AlertCircle size={20} />
+                        <div className="mt-6 p-5 bg-red-50 border-2 border-red-100 rounded-2xl flex items-center gap-4 text-red-600 text-xs font-black uppercase tracking-widest animate-shake">
+                            <AlertCircle size={24} />
                             {error}
                         </div>
                     )}

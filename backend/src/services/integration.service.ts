@@ -1,28 +1,20 @@
-import axios from 'axios';
 import { PrismaClient } from '@prisma/client';
+import axios from 'axios';
 
 const prisma = new PrismaClient();
 
-export const sendSlackNotification = async (workspaceId: string, message: string) => {
+export const sendSlackNotification = async (teamId: string, message: string) => {
     try {
-        const integrations = await (prisma as any).integration.findMany({
-            where: {
-                workspaceId,
-                type: 'SLACK'
-            }
+        const integration = await (prisma as any).integration.findFirst({
+            where: { teamId, type: 'SLACK' }
         });
 
-        for (const integration of integrations) {
-            try {
-                await axios.post(integration.webhookUrl, {
-                    text: message
-                });
-                console.log(`Slack notification sent for workspace ${workspaceId}`);
-            } catch (error) {
-                console.error(`Failed to send Slack notification for integration ${integration.id}:`, error);
-            }
-        }
+        if (!integration || !integration.webhookUrl) return;
+
+        await axios.post(integration.webhookUrl, {
+            text: message
+        });
     } catch (error) {
-        console.error('Slack notification service error:', error);
+        console.error('Slack Notification Error:', error);
     }
 };

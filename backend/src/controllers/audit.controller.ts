@@ -4,39 +4,33 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export const getAuditLogs = async (req: AuthRequest, res: Response) => {
+export const getTeamLogs = async (req: AuthRequest, res: Response) => {
     try {
-        const { id: workspaceId } = req.params;
-        const limit = Number(req.query.limit) || 50;
+        const teamId = req.params.teamId as string;
 
-        // Verify ADMIN access
-        const membership = await prisma.workspaceMember.findUnique({
+        // Verify membership
+        const membership = await prisma.teamMember.findUnique({
             where: {
-                workspaceId_userId: {
-                    workspaceId: workspaceId as string,
+                teamId_userId: {
+                    teamId,
                     userId: req.userId!
                 }
             }
         });
 
-        if (!membership || membership.role !== 'ADMIN') {
-            return res.status(403).json({ error: 'Only admins can view audit logs' });
-        }
+        if (!membership) return res.status(403).json({ error: 'Access denied' });
 
         const logs = await prisma.auditLog.findMany({
-            where: { workspaceId: workspaceId as string },
-            orderBy: { createdAt: 'desc' },
-            take: limit,
+            where: { teamId },
             include: {
-                user: {
-                    select: { id: true, name: true, email: true }
-                }
-            }
+                user: { select: { id: true, name: true, email: true } }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 50
         });
 
         res.json(logs);
     } catch (error) {
-        console.error('Audit Log Fetch Error:', error);
         res.status(500).json({ error: 'Failed to fetch audit logs' });
     }
 };

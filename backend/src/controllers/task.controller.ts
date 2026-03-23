@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
-import { PrismaClient, Status, Priority } from '@prisma/client';
+import { PrismaClient, Status, Priority, Visibility, Role } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 import { parsePdfTasks } from '../utils/pdfParser';
@@ -12,19 +12,29 @@ const prisma = new PrismaClient();
 
 export const createTask = async (req: AuthRequest, res: Response) => {
     try {
-        const { title, description, status, priority, cveId, dueDate, reminderTime, parentId, workspaceId, dependsOnIds, recurrence, customFields } = req.body;
+        const {
+            title, description, status, priority, cveId, dueDate,
+            reminderTime, parentId, teamId, dependsOnIds,
+            recurrence, customFields, assignedToId, visibility
+        } = req.body;
 
-        if (workspaceId) {
-            const membership = await (prisma as any).workspaceMember.findUnique({
+        if (teamId) {
+            const membership = await prisma.teamMember.findUnique({
                 where: {
-                    workspaceId_userId: {
-                        workspaceId,
+                    teamId_userId: {
+                        teamId,
                         userId: req.userId!
                     }
                 }
             });
-            if (!membership || membership.role === 'VIEWER') {
-                return res.status(403).json({ error: 'Permission denied in this workspace' });
+            // Only ADMIN and MANAGER can assign tasks to others
+            if (!membership || membership.role === Role.MEMBER) {
+                if (assignedToId && assignedToId !== req.userId) {
+                    return res.status(403).json({ error: 'Only Admins/Managers can assign tasks to others' });
+                }
+            }
+            if (!membership) {
+                return res.status(403).json({ error: 'Permission denied in this team' });
             }
         }
 
@@ -39,26 +49,31 @@ export const createTask = async (req: AuthRequest, res: Response) => {
             description,
             status: (status as Status) || Status.TODO,
             priority: (priority as Priority) || Priority.MEDIUM,
+            visibility: (visibility as Visibility) || Visibility.TEAM,
             cveId,
             dueDate: parsedDueDate,
             reminderTime: computedReminderTime,
             attachmentName: req.file?.originalname,
             attachmentUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
-            userId: req.userId!,
+            createdById: req.userId!,
+            assignedToId: assignedToId || req.userId!, // Default to creator if not assigned
             parentId: parentId || null,
-            workspaceId: workspaceId || null,
+            teamId: teamId || null,
             recurrence: recurrence || null,
             customFields: customFields || {},
         };
 
-        // Connect dependencies if provided
         if (dependsOnIds && Array.isArray(dependsOnIds) && dependsOnIds.length > 0) {
             taskData.dependsOn = { connect: dependsOnIds.map((id: string) => ({ id })) };
         }
 
         const task = await prisma.task.create({
             data: taskData,
-            include: { dependsOn: { select: { id: true, title: true } } }
+            include: {
+                dependsOn: { select: { id: true, title: true } },
+                createdBy: { select: { id: true, name: true } },
+                assignedTo: { select: { id: true, name: true } }
+            }
         });
 
         await logAuditAction({
@@ -66,17 +81,16 @@ export const createTask = async (req: AuthRequest, res: Response) => {
             resourceType: 'TASK',
             resourceId: task.id,
             userId: req.userId!,
-            workspaceId: workspaceId || undefined,
-            details: { title: task.title }
+            teamId: teamId || undefined,
+            details: { title: task.title, visibility: task.visibility }
         });
 
-        if (workspaceId) {
-            await sendSlackNotification(workspaceId, `🚀 *New Task Created*: "${task.title}" (Priority: ${task.priority})`);
+        if (teamId) {
+            await sendSlackNotification(teamId, `🚀 *New Task Created*: "${task.title}" (Priority: ${task.priority})`);
         }
 
-        // Sync to Google Calendar
         if (task.dueDate) {
-            syncTaskToGoogleCalendar(req.userId!, task);
+            syncTaskToGoogleCalendar(req.userId!, task as any);
         }
 
         res.status(201).json(task);
@@ -88,49 +102,55 @@ export const createTask = async (req: AuthRequest, res: Response) => {
 
 export const getTasks = async (req: AuthRequest, res: Response) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 10, teamId } = req.query;
         const skip = (Number(page) - 1) * Number(limit);
         const take = Number(limit);
 
-        const workspaceId = req.query.workspaceId as string;
+        const userId = req.userId!;
 
+        // Base filter: tasks created by or assigned to user OR public
         const where: any = {
-            userId: !workspaceId ? req.userId : undefined,
-            workspaceId: workspaceId || null,
-            parentId: req.query.parentId === 'any' ? undefined : (req.query.parentId || null)
+            AND: [
+                {
+                    OR: [
+                        { createdById: userId },
+                        { assignedToId: userId },
+                        { visibility: Visibility.PUBLIC },
+                        {
+                            AND: [
+                                { visibility: Visibility.TEAM },
+                                { teamId: (teamId as string) || undefined },
+                                {
+                                    team: {
+                                        members: {
+                                            some: { userId: userId }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
         };
 
-        if (workspaceId) {
-            const membership = await (prisma as any).workspaceMember.findUnique({
-                where: {
-                    workspaceId_userId: {
-                        workspaceId,
-                        userId: req.userId!
-                    }
-                }
-            });
-            if (!membership) return res.status(403).json({ error: 'Access denied' });
-            delete where.userId; // Allow all workspace tasks
+        if (teamId) {
+            where.AND.push({ teamId: teamId as string });
         }
 
         const status = req.query.status as string;
         const priority = req.query.priority as string;
         const search = req.query.search as string;
-        const from = req.query.from as string;
-        const to = req.query.to as string;
 
-        if (status) where.status = status as Status;
-        if (priority) where.priority = priority as Priority;
+        if (status) where.AND.push({ status: status as Status });
+        if (priority) where.AND.push({ priority: priority as Priority });
         if (search) {
-            where.OR = [
-                { title: { contains: search, mode: 'insensitive' } },
-                { description: { contains: search, mode: 'insensitive' } }
-            ];
-        }
-        if (from || to) {
-            where.createdAt = {};
-            if (from) where.createdAt.gte = new Date(from);
-            if (to) where.createdAt.lte = new Date(to);
+            where.AND.push({
+                OR: [
+                    { title: { contains: search, mode: 'insensitive' } },
+                    { description: { contains: search, mode: 'insensitive' } }
+                ]
+            });
         }
 
         const [tasks, total] = await Promise.all([
@@ -139,17 +159,13 @@ export const getTasks = async (req: AuthRequest, res: Response) => {
                 skip,
                 take,
                 include: {
-                    subTasks: {
-                        select: { id: true, status: true }
-                    },
-                    dependsOn: {
-                        select: { id: true, title: true, status: true }
-                    },
-                    dependedBy: {
-                        select: { id: true, title: true, status: true }
-                    }
-                } as any,
-                orderBy: { createdAt: 'desc' } as any
+                    createdBy: { select: { id: true, name: true } },
+                    assignedTo: { select: { id: true, name: true } },
+                    subTasks: { select: { id: true, status: true } },
+                    dependsOn: { select: { id: true, title: true, status: true } },
+                    dependedBy: { select: { id: true, title: true, status: true } }
+                },
+                orderBy: { createdAt: 'desc' }
             }),
             prisma.task.count({ where })
         ]);
@@ -164,26 +180,57 @@ export const getTasks = async (req: AuthRequest, res: Response) => {
             }
         });
     } catch (error) {
+        console.error('Fetch tasks error:', error);
         res.status(500).json({ error: 'Failed to fetch tasks' });
     }
 };
 
 export const updateTask = async (req: AuthRequest, res: Response) => {
     try {
-        const { id } = req.params;
-        const { title, description, status, priority, cveId, dueDate, reminderTime, parentId, dependsOnIds, recurrence, customFields } = req.body;
+        const id = req.params.id as string;
+        const {
+            title, description, status, priority, cveId, dueDate,
+            reminderTime, parentId, dependsOnIds, recurrence,
+            customFields, assignedToId, visibility
+        } = req.body;
+
+        const taskToUpdate = await prisma.task.findUnique({
+            where: { id },
+            include: { team: { include: { members: true } } }
+        });
+
+        if (!taskToUpdate) return res.status(404).json({ error: 'Task not found' });
+
+        // Permission check
+        const membership = taskToUpdate.teamId ? await prisma.teamMember.findUnique({
+            where: { teamId_userId: { teamId: taskToUpdate.teamId, userId: req.userId! } }
+        }) : null;
+
+        const isOwner = taskToUpdate.createdById === req.userId;
+        const isAssignee = taskToUpdate.assignedToId === req.userId;
+        const isAdminOrManager = membership && (membership.role === Role.ADMIN || membership.role === Role.MANAGER);
+
+        if (!isOwner && !isAssignee && !isAdminOrManager) {
+            return res.status(403).json({ error: 'Insufficient permissions to update this task' });
+        }
+
+        // Only ADMIN/MANAGER can re-assign or change visibility of team tasks
+        if (taskToUpdate.teamId && !isAdminOrManager && (assignedToId || visibility)) {
+            if (assignedToId && assignedToId !== taskToUpdate.assignedToId) {
+                return res.status(403).json({ error: 'Only Admins/Managers can re-assign team tasks' });
+            }
+        }
 
         let computedReminderTime = reminderTime ? new Date(reminderTime) : undefined;
         const parsedDueDate = dueDate ? new Date(dueDate) : undefined;
-        if (parsedDueDate && !computedReminderTime) {
-            computedReminderTime = new Date(parsedDueDate.getTime() - 60 * 60 * 1000);
-        }
 
         const updateData: any = {
             title,
             description,
             status: status as Status,
             priority: priority as Priority,
+            visibility: visibility as Visibility,
+            assignedToId,
             cveId,
             parentId: parentId === undefined ? undefined : (parentId || null),
             ...(parsedDueDate && { dueDate: parsedDueDate }),
@@ -194,106 +241,51 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
             }),
         };
 
-        if (recurrence !== undefined) {
-            updateData.recurrence = recurrence || null;
-        }
+        if (recurrence !== undefined) updateData.recurrence = recurrence || null;
+        if (customFields !== undefined) updateData.customFields = customFields || {};
 
-        if (customFields !== undefined) {
-            updateData.customFields = customFields || {};
-        }
-
-        // If task is marked DONE, set completedAt and handle recurrence
-        if (status === 'DONE') {
+        if (status === Status.DONE) {
             updateData.isOverdueNotified = true;
             updateData.completedAt = new Date();
         }
 
-        const taskToUpdate: any = await prisma.task.findUnique({
-            where: { id: id as string },
-            include: { dependsOn: true }
-        });
-        if (!taskToUpdate) return res.status(404).json({ error: 'Task not found' });
-
-        // Dependency check: Cannot complete if dependencies are not DONE
-        if (status === 'DONE') {
-            const incompleteDeps = taskToUpdate.dependsOn?.filter((dep: any) => dep.status !== 'DONE');
-            if (incompleteDeps && incompleteDeps.length > 0) {
-                return res.status(400).json({ error: 'Cannot complete task until all dependencies are DONE' });
-            }
-        }
-
-        // Permission check
-        if (taskToUpdate.userId !== req.userId) {
-            if (!taskToUpdate.workspaceId) {
-                return res.status(403).json({ error: 'Access denied' });
-            }
-            const membership = await (prisma as any).workspaceMember.findUnique({
-                where: {
-                    workspaceId_userId: {
-                        workspaceId: taskToUpdate.workspaceId,
-                        userId: req.userId!
-                    }
-                }
-            });
-            if (!membership || membership.role === 'VIEWER') {
-                return res.status(403).json({ error: 'Permission denied in this workspace' });
-            }
-        }
-
-        // Handle dependency updates
-        if (dependsOnIds !== undefined && Array.isArray(dependsOnIds)) {
-            updateData.dependsOn = {
-                set: dependsOnIds.map((depId: string) => ({ id: depId }))
-            };
+        // Smart Completion Logic: If overdue, we could auto-mark or warn
+        // (Handled here as a reactive check)
+        const isOverdue = taskToUpdate.dueDate && new Date(taskToUpdate.dueDate) < new Date();
+        if (isOverdue && status !== Status.DONE && !taskToUpdate.completedAt) {
+            // Optional: Mark as MISSED flag??
         }
 
         await prisma.task.update({
-            where: { id: id as string },
+            where: { id },
             data: updateData
         });
 
-        // Auto-create next recurring task on completion
-        if (status === 'DONE' && taskToUpdate.recurrence && taskToUpdate.status !== 'DONE') {
-            const nextDue = calculateNextOccurrence(taskToUpdate.dueDate, taskToUpdate.recurrence);
-            await prisma.task.create({
-                data: {
-                    title: taskToUpdate.title,
-                    description: taskToUpdate.description,
-                    priority: taskToUpdate.priority,
-                    status: 'TODO',
-                    userId: taskToUpdate.userId,
-                    workspaceId: taskToUpdate.workspaceId,
-                    recurrence: taskToUpdate.recurrence,
-                    dueDate: nextDue,
-                    reminderTime: nextDue ? new Date(nextDue.getTime() - 60 * 60 * 1000) : null,
-                }
-            });
-        }
-
         const updatedTask = await prisma.task.findUnique({
-            where: { id: id as string },
+            where: { id },
             include: {
+                createdBy: { select: { id: true, name: true } },
+                assignedTo: { select: { id: true, name: true } },
                 dependsOn: { select: { id: true, title: true, status: true } },
                 dependedBy: { select: { id: true, title: true, status: true } }
-            } as any
+            }
         });
 
         await logAuditAction({
             action: 'TASK_UPDATED',
             resourceType: 'TASK',
-            resourceId: id as string,
+            resourceId: id,
             userId: req.userId!,
-            workspaceId: taskToUpdate.workspaceId || undefined,
+            teamId: taskToUpdate.teamId || undefined,
             details: { previousStatus: taskToUpdate.status, newStatus: status }
         });
 
-        if (status === 'DONE' && taskToUpdate.status !== 'DONE' && taskToUpdate.workspaceId) {
-            await sendSlackNotification(taskToUpdate.workspaceId, `✅ *Task Completed*: "${updatedTask?.title || taskToUpdate.title}"`);
+        if (status === Status.DONE && taskToUpdate.status !== Status.DONE && taskToUpdate.teamId) {
+            await sendSlackNotification(taskToUpdate.teamId, `✅ *Task Completed*: "${updatedTask?.title || taskToUpdate.title}"`);
         }
 
-        // Sync to Google Calendar
         if (updatedTask && updatedTask.dueDate) {
-            syncTaskToGoogleCalendar(req.userId!, updatedTask);
+            syncTaskToGoogleCalendar(req.userId!, updatedTask as any);
         }
 
         res.json(updatedTask);
@@ -303,85 +295,54 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
     }
 };
 
-function calculateNextOccurrence(currentDue: Date | null, recurrence: string): Date | null {
-    const base = currentDue ? new Date(currentDue) : new Date();
-    switch (recurrence) {
-        case 'DAILY': base.setDate(base.getDate() + 1); break;
-        case 'WEEKLY': base.setDate(base.getDate() + 7); break;
-        case 'MONTHLY': base.setMonth(base.getMonth() + 1); break;
-        default: return null;
-    }
-    return base;
-}
-
-export const extractTasksFromPdf = async (req: AuthRequest, res: Response) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'No PDF file provided' });
-        }
-
-        const filePath = path.join(__dirname, '../../', req.file.path);
-        const dataBuffer = fs.readFileSync(filePath);
-
-        const extractedPlan = await parsePdfTasks(dataBuffer);
-
-        // Delete temporary file after extraction
-        fs.unlinkSync(filePath);
-
-        res.json(extractedPlan);
-    } catch (error) {
-        console.error('Extraction Error:', error);
-        res.status(500).json({ error: 'Failed to extract tasks from PDF' });
-    }
-};
-
 export const deleteTask = async (req: AuthRequest, res: Response) => {
     try {
-        const { id } = req.params;
-        const taskToDelete: any = await prisma.task.findUnique({ where: { id: id as string } });
+        const id = req.params.id as string;
+        const taskToDelete = await prisma.task.findUnique({ where: { id } });
         if (!taskToDelete) return res.status(404).json({ error: 'Task not found' });
 
-        // Permission check
-        if (taskToDelete.userId !== req.userId) {
-            if (!taskToDelete.workspaceId) {
-                return res.status(403).json({ error: 'Access denied' });
-            }
-            const membership = await (prisma as any).workspaceMember.findUnique({
-                where: {
-                    workspaceId_userId: {
-                        workspaceId: taskToDelete.workspaceId,
-                        userId: req.userId!
-                    }
-                }
-            });
-            if (!membership || membership.role === 'VIEWER' || membership.role === 'MEMBER') {
-                // Only ADMIN or Owner can delete in some enterprise configs, 
-                // but let's allow ADMIN for now specifically for workspace tasks.
-                if (membership?.role !== 'ADMIN') {
-                    return res.status(403).json({ error: 'Only admins can delete workspace tasks' });
-                }
-            }
+        const membership = taskToDelete.teamId ? await prisma.teamMember.findUnique({
+            where: { teamId_userId: { teamId: taskToDelete.teamId, userId: req.userId! } }
+        }) : null;
+
+        const isOwner = taskToDelete.createdById === req.userId;
+        const isAdmin = membership && membership.role === Role.ADMIN;
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ error: 'Only the creator or an Admin can delete this task' });
         }
 
         if (taskToDelete.googleEventId) {
             deleteTaskFromGoogleCalendar(req.userId!, taskToDelete.googleEventId);
         }
 
-        await prisma.task.delete({
-            where: { id: id as string }
-        });
+        await prisma.task.delete({ where: { id } });
 
         await logAuditAction({
             action: 'TASK_DELETED',
             resourceType: 'TASK',
-            resourceId: id as string,
+            resourceId: id,
             userId: req.userId!,
-            workspaceId: taskToDelete.workspaceId || undefined,
+            teamId: taskToDelete.teamId || undefined,
             details: { title: taskToDelete.title }
         });
 
-        res.json({ message: 'Task deleted' });
+        res.json({ message: 'Task deleted successfully' });
     } catch (error) {
+        console.error('Delete error:', error);
         res.status(500).json({ error: 'Failed to delete task' });
+    }
+};
+
+export const extractTasksFromPdf = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'No PDF file provided' });
+        const filePath = path.join(__dirname, '../../', req.file.path);
+        const dataBuffer = fs.readFileSync(filePath);
+        const extractedPlan = await parsePdfTasks(dataBuffer);
+        fs.unlinkSync(filePath);
+        res.json(extractedPlan);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to extract tasks' });
     }
 };

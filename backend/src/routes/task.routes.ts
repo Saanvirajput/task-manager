@@ -22,7 +22,7 @@ const upload = multer({
     }
 });
 
-import { getComments, addComment, deleteComment } from '../controllers/comment.controller';
+import { getTaskComments, addComment } from '../controllers/comment.controller';
 
 const router = Router();
 
@@ -35,8 +35,7 @@ router.put('/:id', upload.single('attachment'), updateTask);
 router.delete('/:id', deleteTask);
 
 // Comment routes
-router.get('/:id/comments', getComments);
+router.get('/:id/comments', getTaskComments);
 router.post('/:id/comments', addComment);
-router.delete('/comments/:commentId', deleteComment);
 
 export default router;

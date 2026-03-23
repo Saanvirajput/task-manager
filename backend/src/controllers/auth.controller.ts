@@ -32,9 +32,9 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
-        const user: any = await prisma.user.findUnique({ where: { email } });
+        const user = await prisma.user.findUnique({ where: { email } });
 
-        if (!user || !(await bcrypt.compare(password, user.password))) {
+        if (!user || !user.password || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
@@ -54,7 +54,6 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const refresh = async (req: Request, res: Response) => {
-
     try {
         const { refreshToken } = req.body;
         if (!refreshToken) return res.status(400).json({ error: 'Refresh token required' });
@@ -76,8 +75,8 @@ export const loginMfa = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Email, password, and MFA token are required' });
         }
 
-        const user: any = await prisma.user.findUnique({ where: { email } });
-        if (!user || !(await bcrypt.compare(password, user.password))) {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user || !user.password || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
@@ -114,7 +113,7 @@ export const loginMfa = async (req: Request, res: Response) => {
 
 export const setupMfa = async (req: AuthRequest, res: Response) => {
     try {
-        const user: any = await (prisma as any).user.findUnique({ where: { id: req.userId! } });
+        const user = await prisma.user.findUnique({ where: { id: req.userId! } });
         if (!user) return res.status(404).json({ error: 'User not found' });
 
         if (user.mfaEnabled) {
@@ -132,9 +131,9 @@ export const setupMfa = async (req: AuthRequest, res: Response) => {
             return res.status(500).json({ error: 'Failed to generate OTP auth URL' });
         }
 
-        await (prisma as any).user.update({
+        await prisma.user.update({
             where: { id: user.id },
-            data: { mfaSecret: secret } // temporarily store the secret before verifying
+            data: { mfaSecret: secret }
         });
 
         const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
@@ -151,7 +150,7 @@ export const verifyMfa = async (req: AuthRequest, res: Response) => {
         const { token } = req.body;
         if (!token) return res.status(400).json({ error: 'MFA token is required' });
 
-        const user: any = await (prisma as any).user.findUnique({ where: { id: req.userId! } });
+        const user = await prisma.user.findUnique({ where: { id: req.userId! } });
         if (!user || !user.mfaSecret) {
             return res.status(400).json({ error: 'MFA setup not initialized' });
         }
@@ -166,7 +165,7 @@ export const verifyMfa = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ error: 'Invalid MFA code' });
         }
 
-        await (prisma as any).user.update({
+        await prisma.user.update({
             where: { id: user.id },
             data: { mfaEnabled: true }
         });
@@ -188,9 +187,13 @@ export const verifyMfa = async (req: AuthRequest, res: Response) => {
 
 export const me = async (req: AuthRequest, res: Response) => {
     try {
-        const user: any = await (prisma.user as any).findUnique({
+        const user = await prisma.user.findUnique({
             where: { id: req.userId! },
-            select: { id: true, email: true, name: true, mfaEnabled: true, calendarSyncEnabled: true, googleId: true }
+            select: {
+                id: true, email: true, name: true,
+                mfaEnabled: true, calendarSyncEnabled: true,
+                googleId: true
+            }
         });
 
         if (!user) return res.status(404).json({ error: 'User not found' });
@@ -204,7 +207,7 @@ export const me = async (req: AuthRequest, res: Response) => {
 export const updateCalendarSync = async (req: AuthRequest, res: Response) => {
     try {
         const { enabled } = req.body;
-        const user: any = await (prisma.user as any).update({
+        const user = await prisma.user.update({
             where: { id: req.userId! },
             data: { calendarSyncEnabled: !!enabled }
         });

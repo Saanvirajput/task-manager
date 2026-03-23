@@ -3,24 +3,19 @@ import api from '@/lib/api';
 import { Send, Trash2, UserCircle } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 
-export default function TaskComments({ taskId, workspaceId }: { taskId: string, workspaceId: string }) {
+export default function TaskComments({ taskId, teamId }: { taskId: string, teamId: string }) {
     const { user } = useAuth();
-    const [comments, setComments] = setCommentsState();
+    const [comments, setComments] = useState<any[]>([]);
     const [newComment, setNewComment] = useState('');
     const [members, setMembers] = useState<any[]>([]);
     const [showMentions, setShowMentions] = useState(false);
     const [mentionFilter, setMentionFilter] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Temp state custom hook for comments
-    function setCommentsState() {
-        return useState<any[]>([]);
-    }
-
     useEffect(() => {
         if (taskId) fetchComments();
-        if (workspaceId) fetchMembers();
-    }, [taskId, workspaceId]);
+        if (teamId) fetchMembers();
+    }, [taskId, teamId]);
 
     const fetchComments = async () => {
         try {
@@ -32,12 +27,12 @@ export default function TaskComments({ taskId, workspaceId }: { taskId: string, 
     };
 
     const fetchMembers = async () => {
-        if (!workspaceId) return;
+        if (!teamId) return;
         try {
-            const { data } = await api.get(`/workspaces/${workspaceId}`);
+            const { data } = await api.get(`/teams/${teamId}`);
             setMembers(data.members || []);
         } catch (error) {
-            console.error('Failed to fetch workspace members for mentions', error);
+            console.error('Failed to fetch team members for mentions', error);
         }
     };
 
@@ -45,7 +40,6 @@ export default function TaskComments({ taskId, workspaceId }: { taskId: string, 
         const val = e.target.value;
         setNewComment(val);
 
-        // Simple mention detection: triggers if the last word starts with @
         const words = val.split(' ');
         const lastWord = words[words.length - 1];
 
@@ -59,7 +53,7 @@ export default function TaskComments({ taskId, workspaceId }: { taskId: string, 
 
     const insertMention = (memberUser: any) => {
         const words = newComment.split(' ');
-        words.pop(); // remove the partial @ment...
+        words.pop();
         const mentionText = `@${memberUser.name || memberUser.email} `;
         setNewComment(words.length > 0 ? words.join(' ') + ' ' + mentionText : mentionText);
         setShowMentions(false);
@@ -70,7 +64,6 @@ export default function TaskComments({ taskId, workspaceId }: { taskId: string, 
         e.preventDefault();
         if (!newComment.trim()) return;
 
-        // Extract mentioned users based on names/emails in the text
         const mentionedIds = members
             .filter(m => newComment.includes(`@${m.user.name}`) || newComment.includes(`@${m.user.email}`))
             .map(m => m.user.id);

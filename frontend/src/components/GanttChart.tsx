@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { ArrowRight, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowRight, Clock, CheckCircle2, AlertCircle, Calendar } from 'lucide-react';
 
 interface GanttTask {
     id: string;
@@ -21,15 +21,15 @@ interface GanttChartProps {
 }
 
 const STATUS_COLORS: Record<string, { bar: string; text: string; bg: string }> = {
-    TODO: { bar: 'bg-amber-400', text: 'text-amber-700', bg: 'bg-amber-50' },
-    IN_PROGRESS: { bar: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50' },
+    TODO: { bar: 'bg-brand-400', text: 'text-brand-700', bg: 'bg-brand-50' },
+    IN_PROGRESS: { bar: 'bg-indigo-500', text: 'text-indigo-700', bg: 'bg-indigo-50' },
     DONE: { bar: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50' },
 };
 
 const PRIORITY_DOTS: Record<string, string> = {
     HIGH: 'bg-red-500',
-    MEDIUM: 'bg-amber-500',
-    LOW: 'bg-blue-400',
+    MEDIUM: 'bg-orange-500',
+    LOW: 'bg-brand-400',
 };
 
 export default function GanttChart({ tasks, onTaskClick }: GanttChartProps) {
@@ -40,7 +40,7 @@ export default function GanttChart({ tasks, onTaskClick }: GanttChartProps) {
         start.setHours(0, 0, 0, 0);
 
         const end = new Date(now);
-        end.setDate(end.getDate() + 14);
+        end.setDate(end.getDate() + 21);
         end.setHours(23, 59, 59, 999);
 
         const dayList: Date[] = [];
@@ -71,39 +71,38 @@ export default function GanttChart({ tasks, onTaskClick }: GanttChartProps) {
         return { left: barStart, width: barWidth };
     };
 
-    // Build a map of task dependencies for drawing arrows
     const taskIndexMap = new Map<string, number>();
     tasks.forEach((t, i) => taskIndexMap.set(t.id, i));
 
     if (tasks.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
-                <Clock size={48} className="mb-4 opacity-50" />
-                <p className="font-bold text-lg">No tasks to display</p>
-                <p className="text-sm">Create tasks with due dates to see your timeline</p>
+            <div className="flex flex-col items-center justify-center py-24 text-neutral-400 bg-white rounded-3xl border border-neutral-100 shadow-inner">
+                <Calendar size={64} className="mb-6 opacity-10" />
+                <p className="font-black text-xs uppercase tracking-widest italic">Operational Timeline Empty</p>
+                <p className="text-[10px] uppercase font-bold mt-2 opacity-50">Assign directives to populate the Gantt ledger.</p>
             </div>
         );
     }
 
     return (
-        <div className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-3xl border border-neutral-200 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-neutral-100 bg-neutral-50/50 flex items-center justify-between">
-                <h3 className="text-sm font-black text-neutral-800 uppercase tracking-wider">
-                    📊 Gantt Timeline
+            <div className="px-8 py-6 border-b border-neutral-100 bg-neutral-50/30 flex items-center justify-between">
+                <h3 className="text-xs font-black text-neutral-900 uppercase tracking-widest flex items-center gap-2">
+                    <Calendar size={16} className="text-brand-500" />
+                    Strategic Roadmap Matrix
                 </h3>
-                <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-wider">
-                    <span className="flex items-center gap-1.5"><span className="w-3 h-1.5 rounded bg-amber-400 inline-block"></span> To Do</span>
-                    <span className="flex items-center gap-1.5"><span className="w-3 h-1.5 rounded bg-blue-500 inline-block"></span> In Progress</span>
-                    <span className="flex items-center gap-1.5"><span className="w-3 h-1.5 rounded bg-emerald-500 inline-block"></span> Done</span>
+                <div className="flex items-center gap-6 text-[9px] font-black uppercase tracking-widest">
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-brand-400"></span> Planned</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-indigo-500"></span> Active</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-emerald-500"></span> Concluded</span>
                 </div>
             </div>
 
             <div className="flex">
                 {/* Task Names Column */}
-                <div className="flex-shrink-0 w-[220px] border-r border-neutral-100">
-                    {/* Day header spacer */}
-                    <div className="h-10 border-b border-neutral-100 bg-neutral-50/50"></div>
+                <div className="flex-shrink-0 w-[240px] border-r border-neutral-100 bg-white">
+                    <div className="h-12 border-b border-neutral-100 bg-neutral-50/20"></div>
                     {tasks.map((task, i) => {
                         const colors = STATUS_COLORS[task.status] || STATUS_COLORS.TODO;
                         const priColor = PRIORITY_DOTS[task.priority] || PRIORITY_DOTS.MEDIUM;
@@ -111,20 +110,17 @@ export default function GanttChart({ tasks, onTaskClick }: GanttChartProps) {
                             <div
                                 key={task.id}
                                 onClick={() => onTaskClick(task)}
-                                className="h-12 flex items-center px-4 border-b border-neutral-50 hover:bg-neutral-50 cursor-pointer transition-colors group"
+                                className="h-14 flex items-center px-6 border-b border-neutral-50 hover:bg-neutral-50 cursor-pointer transition-all group"
                             >
-                                <div className={`w-2 h-2 rounded-full ${priColor} flex-shrink-0 mr-3`}></div>
+                                <div className={`w-1.5 h-6 rounded-full ${priColor} flex-shrink-0 mr-4 opacity-50 group-hover:opacity-100 transition-opacity`}></div>
                                 <div className="overflow-hidden flex-1">
-                                    <p className={`text-xs font-bold truncate ${task.status === 'DONE' ? 'text-neutral-400 line-through' : 'text-neutral-800'}`}>
+                                    <p className={`text-xs font-black truncate tracking-tight ${task.status === 'DONE' ? 'text-neutral-300 line-through' : 'text-neutral-800'}`}>
                                         {task.title}
                                     </p>
-                                    <div className="flex items-center gap-1.5">
-                                        <span className={`text-[9px] font-bold uppercase ${colors.text}`}>{task.status.replace('_', ' ')}</span>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <span className={`text-[8px] font-black uppercase tracking-widest ${colors.text}`}>{task.status}</span>
                                         {task.recurrence && (
-                                            <span className="text-[9px] font-bold text-purple-500">🔁 {task.recurrence}</span>
-                                        )}
-                                        {(task.dependsOn?.length || 0) > 0 && (
-                                            <span className="text-[9px] text-orange-500 font-bold">⛓️ {task.dependsOn!.length}</span>
+                                            <span className="text-[8px] font-black text-purple-500 uppercase">🔁 {task.recurrence}</span>
                                         )}
                                     </div>
                                 </div>
@@ -135,20 +131,20 @@ export default function GanttChart({ tasks, onTaskClick }: GanttChartProps) {
 
                 {/* Timeline Column */}
                 <div className="flex-1 overflow-x-auto">
-                    <div className="min-w-[600px]">
+                    <div className="min-w-[1000px]">
                         {/* Day Headers */}
-                        <div className="flex h-10 border-b border-neutral-100 bg-neutral-50/50">
+                        <div className="flex h-12 border-b border-neutral-100 bg-neutral-50/20">
                             {days.map((day, i) => {
                                 const isToday = i === todayIndex;
                                 const isWeekend = day.getDay() === 0 || day.getDay() === 6;
                                 return (
                                     <div
                                         key={i}
-                                        className={`flex-1 flex flex-col items-center justify-center border-r border-neutral-50 text-[9px] font-bold
-                                            ${isToday ? 'bg-indigo-50 text-indigo-700' : isWeekend ? 'text-neutral-300' : 'text-neutral-400'}`}
+                                        className={`flex-1 flex flex-col items-center justify-center border-r border-neutral-50/50 text-[8px] font-black uppercase tracking-tighter
+                                            ${isToday ? 'bg-brand-50 text-brand-700' : isWeekend ? 'text-neutral-300 bg-neutral-50/10' : 'text-neutral-400'}`}
                                     >
                                         <span>{day.toLocaleDateString('en', { weekday: 'short' })}</span>
-                                        <span className={`${isToday ? 'bg-indigo-500 text-white w-4 h-4 rounded-full flex items-center justify-center' : ''}`}>
+                                        <span className={`text-[10px] mt-0.5 ${isToday ? 'bg-brand-500 text-white w-5 h-5 rounded-lg flex items-center justify-center shadow-lg shadow-brand-500/20' : ''}`}>
                                             {day.getDate()}
                                         </span>
                                     </div>
@@ -156,56 +152,59 @@ export default function GanttChart({ tasks, onTaskClick }: GanttChartProps) {
                             })}
                         </div>
 
-                        {/* Task Bars */}
+                        {/* Task Bars Ledger */}
                         {tasks.map((task, i) => {
                             const { left, width } = getBarPosition(task);
                             const colors = STATUS_COLORS[task.status] || STATUS_COLORS.TODO;
                             return (
                                 <div
                                     key={task.id}
-                                    className="h-12 relative border-b border-neutral-50 group"
+                                    className="h-14 relative border-b border-neutral-50 group"
                                 >
-                                    {/* Grid lines */}
+                                    {/* Grid Matrix */}
                                     <div className="absolute inset-0 flex">
                                         {days.map((day, di) => (
                                             <div
                                                 key={di}
-                                                className={`flex-1 border-r border-neutral-50 ${di === todayIndex ? 'bg-indigo-50/30' : ''} ${(day.getDay() === 0 || day.getDay() === 6) ? 'bg-neutral-50/50' : ''}`}
+                                                className={`flex-1 border-r border-neutral-50/30 ${di === todayIndex ? 'bg-brand-50/10' : ''}`}
                                             />
                                         ))}
                                     </div>
 
-                                    {/* Today vertical line */}
+                                    {/* Today Line */}
                                     {todayIndex >= 0 && (
                                         <div
-                                            className="absolute top-0 bottom-0 border-l-2 border-dashed border-indigo-300 z-10"
+                                            className="absolute top-0 bottom-0 border-l border-brand-500/30 z-10 shadow-[0_0_15px_rgba(123,104,238,0.2)]"
                                             style={{ left: `${(todayIndex / totalDays) * 100}%` }}
                                         />
                                     )}
 
-                                    {/* Task Bar */}
+                                    {/* Task Pulse Bar */}
                                     <div
                                         onClick={() => onTaskClick(task)}
-                                        className={`absolute top-2 h-8 ${colors.bar} rounded-md shadow-sm cursor-pointer transition-all hover:shadow-md hover:brightness-110 flex items-center px-2 z-20`}
-                                        style={{ left: `${left}%`, width: `${width}%`, minWidth: '20px' }}
-                                        title={`${task.title}\n${task.status} | ${task.priority}`}
+                                        className={`absolute top-3.5 h-7 ${colors.bar} rounded-lg shadow-sm cursor-pointer transition-all hover:shadow-xl hover:scale-[1.02] flex items-center px-3 z-20 group/bar border-b-4 border-black/10`}
+                                        style={{ left: `${left}%`, width: `${width}%`, minWidth: '30px' }}
                                     >
-                                        <span className="text-[10px] font-bold text-white truncate">
-                                            {width > 8 ? task.title : ''}
+                                        <span className="text-[9px] font-black text-white truncate uppercase tracking-widest drop-shadow-sm">
+                                            {width > 12 ? task.title : ''}
                                         </span>
+
+                                        {/* Status Glow */}
+                                        <div className={`absolute -right-1 -top-1 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm ${task.status === 'DONE' ? 'bg-green-500' : task.status === 'IN_PROGRESS' ? 'bg-blue-500' : 'bg-brand-400'}`}></div>
                                     </div>
 
-                                    {/* Dependency Arrow Indicators */}
+                                    {/* Dependency Connectors */}
                                     {task.dependsOn?.map(dep => {
                                         const depIdx = taskIndexMap.get(dep.id);
                                         if (depIdx === undefined) return null;
                                         return (
                                             <div
                                                 key={dep.id}
-                                                className="absolute left-0 top-1/2 -translate-y-1/2 z-30"
-                                                style={{ left: `${left}%`, marginLeft: '-8px' }}
+                                                className="absolute left-0 top-1/2 -translate-y-1/2 z-30 flex items-center"
+                                                style={{ left: `${left}%`, marginLeft: '-12px' }}
                                             >
-                                                <ArrowRight size={10} className="text-orange-500" />
+                                                <div className="w-3 h-0.5 bg-orange-400 rounded-full"></div>
+                                                <ArrowRight size={10} className="text-orange-500 -ml-1" />
                                             </div>
                                         );
                                     })}
@@ -216,21 +215,20 @@ export default function GanttChart({ tasks, onTaskClick }: GanttChartProps) {
                 </div>
             </div>
 
-            {/* Dependency Legend */}
+            {/* Dependency Ledger */}
             {tasks.some(t => (t.dependsOn?.length || 0) > 0) && (
-                <div className="px-6 py-3 border-t border-neutral-100 bg-neutral-50/50">
-                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Dependencies</p>
-                    <div className="flex flex-wrap gap-2">
+                <div className="px-8 py-4 border-t border-neutral-100 bg-neutral-50/30">
+                    <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-3 italic">Chain of Dependency</p>
+                    <div className="flex flex-wrap gap-3">
                         {tasks.filter(t => (t.dependsOn?.length || 0) > 0).map(t => (
-                            <div key={t.id} className="flex items-center gap-1 text-[10px] text-neutral-500 bg-white px-2 py-1 rounded border border-neutral-100">
-                                <span className="font-bold truncate max-w-[100px]">{t.title}</span>
-                                <ArrowRight size={10} className="text-orange-400 flex-shrink-0" />
-                                <span className="truncate max-w-[100px]">{t.dependsOn!.map(d => d.title).join(', ')}</span>
-                                {t.dependsOn!.every(d => d.status === 'DONE') ? (
-                                    <CheckCircle2 size={10} className="text-green-500 flex-shrink-0" />
-                                ) : (
-                                    <AlertCircle size={10} className="text-amber-500 flex-shrink-0" />
-                                )}
+                            <div key={t.id} className="flex items-center gap-2 text-[10px] text-neutral-600 bg-white px-3 py-2 rounded-xl border border-neutral-100 shadow-sm hover:shadow-md transition-shadow">
+                                <span className="font-black uppercase tracking-tight truncate max-w-[120px]">{t.title}</span>
+                                <ArrowRight size={12} className="text-orange-400 flex-shrink-0" />
+                                <div className="flex gap-1">
+                                    {t.dependsOn!.map(d => (
+                                        <span key={d.id} className="font-bold underline decoration-neutral-200">{d.title}</span>
+                                    ))}
+                                </div>
                             </div>
                         ))}
                     </div>

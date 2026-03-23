@@ -6,35 +6,35 @@ export type AuditAction =
     | 'TASK_CREATED'
     | 'TASK_UPDATED'
     | 'TASK_DELETED'
-    | 'WORKSPACE_CREATED'
-    | 'WORKSPACE_UPDATED'
-    | 'WORKSPACE_DELETED'
+    | 'TEAM_CREATED'
+    | 'TEAM_UPDATED'
+    | 'TEAM_DELETED'
     | 'MEMBER_INVITED'
     | 'MEMBER_REMOVED'
     | 'MEMBER_ROLE_UPDATED'
     | 'MFA_ENABLED'
     | 'MFA_LOGIN';
 
-export type ResourceType = 'TASK' | 'WORKSPACE' | 'MEMBER' | 'USER';
+export type ResourceType = 'TASK' | 'TEAM' | 'MEMBER' | 'USER';
 
 interface AuditLogPayload {
     action: AuditAction;
     resourceType: ResourceType;
     resourceId?: string;
     userId: string;
-    workspaceId?: string;
+    teamId?: string;
     details?: any;
 }
 
 export const logAuditAction = async (payload: AuditLogPayload) => {
     try {
-        await prisma.auditLog.create({
+        await (prisma as any).auditLog.create({
             data: {
                 action: payload.action,
                 resourceType: payload.resourceType,
                 resourceId: payload.resourceId,
                 userId: payload.userId,
-                workspaceId: payload.workspaceId,
+                teamId: payload.teamId,
                 details: payload.details ? JSON.parse(JSON.stringify(payload.details)) : null,
             }
         });

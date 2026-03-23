@@ -1,26 +1,19 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 import slugify from 'slugify';
 import { logAuditAction } from '../services/audit.service';
 
-const prisma = new PrismaClient() as any;
+const prisma = new PrismaClient();
 
-// Use strings for Role values since Prisma enum types might lag in IDE
-const ROLES = {
-    ADMIN: 'ADMIN',
-    MEMBER: 'MEMBER',
-    VIEWER: 'VIEWER'
-};
-
-export const createWorkspace = async (req: AuthRequest, res: Response) => {
+export const createTeam = async (req: AuthRequest, res: Response) => {
     try {
         const { name } = req.body;
-        if (!name) return res.status(400).json({ error: 'Workspace name is required' });
+        if (!name) return res.status(400).json({ error: 'Team name is required' });
 
         const slug = slugify(name, { lower: true, strict: true }) + '-' + Math.random().toString(36).substring(2, 7);
 
-        const workspace = await prisma.workspace.create({
+        const team = await prisma.team.create({
             data: {
                 name,
                 slug,
@@ -28,7 +21,7 @@ export const createWorkspace = async (req: AuthRequest, res: Response) => {
                 members: {
                     create: {
                         userId: req.userId!,
-                        role: ROLES.ADMIN
+                        role: Role.ADMIN
                     }
                 }
             },
@@ -38,27 +31,27 @@ export const createWorkspace = async (req: AuthRequest, res: Response) => {
         });
 
         await logAuditAction({
-            action: 'WORKSPACE_CREATED',
-            resourceType: 'WORKSPACE',
-            resourceId: workspace.id,
+            action: 'TEAM_CREATED',
+            resourceType: 'TEAM',
+            resourceId: team.id,
             userId: req.userId!,
-            workspaceId: workspace.id,
-            details: { name: workspace.name }
+            teamId: team.id,
+            details: { name: team.name }
         });
 
-        res.status(201).json(workspace);
+        res.status(201).json(team);
     } catch (error) {
-        console.error('Create Workspace Error:', error);
-        res.status(500).json({ error: 'Failed to create workspace' });
+        console.error('Create Team Error:', error);
+        res.status(500).json({ error: 'Failed to create team' });
     }
 };
 
-export const getMyWorkspaces = async (req: AuthRequest, res: Response) => {
+export const getMyTeams = async (req: AuthRequest, res: Response) => {
     try {
-        const memberships = await prisma.workspaceMember.findMany({
+        const memberships = await prisma.teamMember.findMany({
             where: { userId: req.userId! },
             include: {
-                workspace: {
+                team: {
                     include: {
                         _count: {
                             select: { members: true, tasks: true }
@@ -68,29 +61,30 @@ export const getMyWorkspaces = async (req: AuthRequest, res: Response) => {
             }
         });
 
-        const workspaces = memberships.map((m: any) => ({
-            ...m.workspace,
+        const teams = memberships.map((m: any) => ({
+            ...m.team,
             myRole: m.role
         }));
 
-        res.json(workspaces);
+        res.json(teams);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch workspaces' });
+        console.error('Get Teams Error:', error);
+        res.status(500).json({ error: 'Failed to fetch teams' });
     }
 };
 
-export const getWorkspaceById = async (req: AuthRequest, res: Response) => {
+export const getTeamById = async (req: AuthRequest, res: Response) => {
     try {
-        const { id } = req.params;
-        const membership = await prisma.workspaceMember.findUnique({
+        const id = req.params.id as string;
+        const membership = await prisma.teamMember.findUnique({
             where: {
-                workspaceId_userId: {
-                    workspaceId: id,
+                teamId_userId: {
+                    teamId: id,
                     userId: req.userId!
                 }
             },
             include: {
-                workspace: {
+                team: {
                     include: {
                         members: {
                             include: {
@@ -107,30 +101,27 @@ export const getWorkspaceById = async (req: AuthRequest, res: Response) => {
         if (!membership) return res.status(403).json({ error: 'Access denied' });
 
         res.json({
-            ...membership.workspace,
+            ...membership.team,
             myRole: membership.role
         });
     } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch workspace details' });
+        res.status(500).json({ error: 'Failed to fetch team details' });
     }
 };
 
 export const inviteMember = async (req: AuthRequest, res: Response) => {
     try {
-        const { id: workspaceId } = req.params;
+        const teamId = req.params.id as string;
         const { email, role } = req.body;
-
-        // Admin check is now handled by requireRole middleware
-
 
         const userToInvite = await prisma.user.findUnique({ where: { email } });
         if (!userToInvite) return res.status(404).json({ error: 'User not found' });
 
-        const newMember = await prisma.workspaceMember.create({
+        const newMember = await prisma.teamMember.create({
             data: {
-                workspaceId,
+                teamId,
                 userId: userToInvite.id,
-                role: role || ROLES.MEMBER
+                role: (role as Role) || Role.MEMBER
             },
             include: {
                 user: {
@@ -144,14 +135,14 @@ export const inviteMember = async (req: AuthRequest, res: Response) => {
             resourceType: 'MEMBER',
             resourceId: newMember.id,
             userId: req.userId!,
-            workspaceId: workspaceId as string,
+            teamId: teamId as string,
             details: { invitedUserId: userToInvite.id, role: newMember.role }
         });
 
         res.status(201).json(newMember);
     } catch (error: any) {
         if (error.code === 'P2002') {
-            return res.status(400).json({ error: 'User is already a member of this workspace' });
+            return res.status(400).json({ error: 'User is already a member of this team' });
         }
         res.status(500).json({ error: 'Failed to invite member' });
     }
@@ -159,20 +150,18 @@ export const inviteMember = async (req: AuthRequest, res: Response) => {
 
 export const removeMember = async (req: AuthRequest, res: Response) => {
     try {
-        const { id: workspaceId, userId: memberUserId } = req.params;
+        const teamId = req.params.id as string;
+        const memberUserId = req.params.userId as string;
 
-        // Admin check is now handled by requireRole middleware
-
-
-        const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
-        if (workspace?.ownerId === memberUserId) {
-            return res.status(400).json({ error: 'Cannot remove the workspace owner' });
+        const team = await prisma.team.findUnique({ where: { id: teamId } });
+        if (team?.ownerId === memberUserId) {
+            return res.status(400).json({ error: 'Cannot remove the team owner' });
         }
 
-        await prisma.workspaceMember.delete({
+        await prisma.teamMember.delete({
             where: {
-                workspaceId_userId: {
-                    workspaceId: workspaceId as string,
+                teamId_userId: {
+                    teamId: teamId as string,
                     userId: memberUserId as string
                 }
             }
@@ -183,7 +172,7 @@ export const removeMember = async (req: AuthRequest, res: Response) => {
             resourceType: 'MEMBER',
             resourceId: memberUserId as string,
             userId: req.userId!,
-            workspaceId: workspaceId as string,
+            teamId: teamId as string,
             details: { removedUserId: memberUserId }
         });
 
@@ -195,29 +184,27 @@ export const removeMember = async (req: AuthRequest, res: Response) => {
 
 export const updateMemberRole = async (req: AuthRequest, res: Response) => {
     try {
-        const { id: workspaceId, userId: targetUserId } = req.params;
+        const teamId = req.params.id as string;
+        const targetUserId = req.params.userId as string;
         const { role } = req.body;
 
-        if (!role || ![ROLES.ADMIN, ROLES.MEMBER, ROLES.VIEWER].includes(role)) {
-            return res.status(400).json({ error: 'Invalid role. Must be ADMIN, MEMBER, or VIEWER' });
+        if (!role || !Object.values(Role).includes(role as Role)) {
+            return res.status(400).json({ error: 'Invalid role' });
         }
 
-        // Admin check is now handled by requireRole middleware
-
-        // Prevent demoting the owner
-        const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
-        if (workspace?.ownerId === targetUserId && role !== ROLES.ADMIN) {
-            return res.status(400).json({ error: 'Cannot demote the workspace owner' });
+        const team = await prisma.team.findUnique({ where: { id: teamId } });
+        if (team?.ownerId === targetUserId && role !== Role.ADMIN) {
+            return res.status(400).json({ error: 'Cannot demote the team owner' });
         }
 
-        const updated = await prisma.workspaceMember.update({
+        const updated = await prisma.teamMember.update({
             where: {
-                workspaceId_userId: {
-                    workspaceId: workspaceId as string,
+                teamId_userId: {
+                    teamId: teamId as string,
                     userId: targetUserId as string
                 }
             },
-            data: { role },
+            data: { role: role as Role },
             include: {
                 user: {
                     select: { id: true, name: true, email: true }
@@ -230,7 +217,7 @@ export const updateMemberRole = async (req: AuthRequest, res: Response) => {
             resourceType: 'MEMBER',
             resourceId: updated.id,
             userId: req.userId!,
-            workspaceId: workspaceId as string,
+            teamId: teamId as string,
             details: { targetUserId: targetUserId, newRole: role }
         });
 

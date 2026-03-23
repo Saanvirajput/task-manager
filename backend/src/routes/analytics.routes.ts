@@ -4,6 +4,6 @@ import { authMiddleware } from '../middleware/auth.middleware';
 
 const router = Router();
 
-router.get('/workload/:workspaceId', authMiddleware, getWorkloadAnalytics);
+router.get('/workload/:teamId', authMiddleware, getWorkloadAnalytics);
 
 export default router;

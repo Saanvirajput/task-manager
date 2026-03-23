@@ -9,7 +9,7 @@ async function main() {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 1. Cleanup existing tasks (optional but good for clean seed)
-    await prisma.task.deleteMany({ where: { user: { email } } });
+    await prisma.task.deleteMany({ where: { createdBy: { email } } });
 
     // 2. Ensure User exists
     const user = await prisma.user.upsert({
@@ -53,7 +53,7 @@ async function main() {
                 description: `Detailed analysis and execution of ${titles[i]} for the Q1 cycle.`,
                 status,
                 priority,
-                userId: user.id,
+                createdById: user.id,
                 createdAt,
                 completedAt: status === Status.DONE ? new Date(createdAt.getTime() + 86400000) : null,
             },

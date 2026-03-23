@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '@/lib/api';
-import { Bell, Check, CheckCheck, Clock, AlertTriangle, X, Trash2 } from 'lucide-react';
+import { Bell, Check, CheckCheck, Clock, AlertTriangle, X, Trash2, ShieldAlert } from 'lucide-react';
 
 interface Notification {
     id: string;
@@ -21,14 +21,14 @@ function Toast({ message, type, onClose }: { message: string; type: string; onCl
     }, [onClose]);
 
     return (
-        <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border text-sm font-medium animate-in slide-in-from-right duration-300 ${type === 'OVERDUE'
-            ? 'bg-red-50 border-red-200 text-red-800'
-            : 'bg-blue-50 border-blue-200 text-blue-800'
+        <div className={`flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border-2 text-sm font-black uppercase tracking-widest animate-in slide-in-from-right-8 duration-500 backdrop-blur-md ${type === 'OVERDUE'
+            ? 'bg-red-50/90 border-red-200 text-red-800 shadow-red-500/10'
+            : 'bg-brand-50/90 border-brand-200 text-brand-800 shadow-brand-500/10'
             }`}>
-            {type === 'OVERDUE' ? <AlertTriangle size={16} /> : <Clock size={16} />}
-            <span className="flex-1 max-w-[280px] truncate">{message}</span>
-            <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600">
-                <X size={14} />
+            {type === 'OVERDUE' ? <AlertTriangle size={18} /> : <ShieldAlert size={18} />}
+            <span className="flex-1 max-w-[320px] truncate tracking-tight">{message}</span>
+            <button onClick={onClose} className="p-1.5 hover:bg-black/5 rounded-lg transition-colors">
+                <X size={16} />
             </button>
         </div>
     );
@@ -48,7 +48,6 @@ export default function NotificationBell() {
             const res = await api.get('/notifications');
             setNotifications(res.data.notifications);
 
-            // Show toasts for new notifications
             const newUnread = res.data.unreadCount;
             if (newUnread > prevUnreadRef.current && prevUnreadRef.current !== 0) {
                 const newNotifs = res.data.notifications
@@ -63,17 +62,16 @@ export default function NotificationBell() {
             setUnreadCount(newUnread);
             prevUnreadRef.current = newUnread;
         } catch (error) {
-            // Silently fail - don't spam console during polling
+            // Silently fail
         }
     }, []);
 
     useEffect(() => {
         fetchNotifications();
-        const interval = setInterval(fetchNotifications, 30000); // Poll every 30 seconds
+        const interval = setInterval(fetchNotifications, 30000);
         return () => clearInterval(interval);
     }, [fetchNotifications]);
 
-    // Close dropdown on outside click
     useEffect(() => {
         const handleClick = (e: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -88,10 +86,8 @@ export default function NotificationBell() {
         e.preventDefault();
         e.stopPropagation();
         try {
-            // Optimistic update
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
             setUnreadCount(prev => Math.max(0, prev - 1));
-
             await api.patch(`/notifications/${id}/read`);
             fetchNotifications();
         } catch (err) {
@@ -103,10 +99,8 @@ export default function NotificationBell() {
         e.preventDefault();
         e.stopPropagation();
         try {
-            // Optimistic update
             setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
             setUnreadCount(0);
-
             await api.patch('/notifications/read-all');
             fetchNotifications();
         } catch (err) {
@@ -120,11 +114,9 @@ export default function NotificationBell() {
         if (selectedIds.length === 0) return;
 
         try {
-            // Optimistic update
             setNotifications(prev => prev.filter(n => !selectedIds.includes(n.id)));
             const deletedUnreadCount = notifications.filter(n => selectedIds.includes(n.id) && !n.isRead).length;
             setUnreadCount(prev => Math.max(0, prev - deletedUnreadCount));
-
             await api.delete('/notifications', { data: { ids: selectedIds } });
             setSelectedIds([]);
             fetchNotifications();
@@ -168,7 +160,7 @@ export default function NotificationBell() {
     return (
         <>
             {/* Toast Container */}
-            <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2">
+            <div className="fixed top-8 right-8 z-[100] flex flex-col gap-3">
                 {toasts.map(t => (
                     <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
                 ))}
@@ -178,11 +170,11 @@ export default function NotificationBell() {
             <div ref={dropdownRef} className="relative">
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="relative p-2 rounded-lg hover:bg-neutral-100 transition-colors"
+                    className="relative p-3 rounded-2xl hover:bg-neutral-100 transition-all group"
                 >
-                    <Bell size={22} className="text-neutral-600" />
+                    <Bell size={22} className="text-neutral-500 group-hover:text-brand-600 transition-colors" />
                     {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                        <span className="absolute top-2 right-2 w-5 h-5 bg-brand-500 text-white text-[10px] font-black rounded-lg flex items-center justify-center ring-4 ring-white shadow-lg shadow-brand-500/20 animate-bounce">
                             {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                     )}
@@ -190,70 +182,72 @@ export default function NotificationBell() {
 
                 {/* Dropdown */}
                 {isOpen && (
-                    <div className="absolute right-0 top-12 w-96 bg-white rounded-xl shadow-2xl border border-neutral-200 z-50 overflow-hidden">
-                        <div className="flex items-center justify-between p-4 border-b border-neutral-100 bg-neutral-50/50">
-                            <div className="flex items-center gap-2">
-                                <h3 className="font-bold text-neutral-800 text-sm">Notifications</h3>
+                    <div className="absolute right-0 top-16 w-[400px] bg-white rounded-[2rem] shadow-2xl border border-neutral-200 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-300 ring-1 ring-black/5">
+                        <div className="flex items-center justify-between p-6 border-b border-neutral-100 bg-neutral-50/30">
+                            <div className="flex items-center gap-3">
+                                <h3 className="font-black text-neutral-900 text-xs uppercase tracking-widest leading-none">Intelligence Hub</h3>
                                 {notifications.length > 0 && (
                                     <button
                                         onClick={toggleSelectAll}
-                                        className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 hover:text-neutral-600 transition-colors"
+                                        className="text-[9px] font-black uppercase tracking-widest text-neutral-400 hover:text-brand-600 transition-colors"
                                     >
-                                        {selectedIds.length === notifications.length ? 'Unselect All' : 'Select All'}
+                                        {selectedIds.length === notifications.length ? 'Clear Selection' : 'Select All'}
                                     </button>
                                 )}
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-4">
                                 {selectedIds.length > 0 ? (
                                     <button
                                         onClick={deleteSelected}
-                                        className="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-600 animate-in fade-in slide-in-from-right-2 duration-200"
+                                        className="flex items-center gap-1.5 text-[10px] font-black text-red-500 hover:text-red-600 uppercase tracking-widest"
                                     >
-                                        <Trash2 size={14} /> Delete ({selectedIds.length})
+                                        <Trash2 size={14} /> Purge ({selectedIds.length})
                                     </button>
                                 ) : unreadCount > 0 ? (
-                                    <button onClick={markAllAsRead} className="flex items-center gap-1 text-xs font-medium text-brand-500 hover:text-brand-600">
-                                        <CheckCheck size={14} /> Mark all read
+                                    <button onClick={markAllAsRead} className="flex items-center gap-1.5 text-[10px] font-black text-brand-600 hover:text-brand-700 uppercase tracking-widest">
+                                        <CheckCheck size={14} /> Ack All
                                     </button>
                                 ) : null}
                             </div>
                         </div>
 
-                        <div className="max-h-80 overflow-y-auto">
+                        <div className="max-h-[450px] overflow-y-auto custom-scrollbar">
                             {notifications.length === 0 ? (
-                                <div className="p-8 text-center text-neutral-400 text-sm">
-                                    <Bell size={32} className="mx-auto mb-2 opacity-30" />
-                                    No notifications yet
+                                <div className="py-20 text-center flex flex-col items-center justify-center gap-4">
+                                    <ShieldAlert size={48} className="text-neutral-100" />
+                                    <p className="text-[10px] font-black text-neutral-300 uppercase tracking-[0.2em]">All Systems Nominal</p>
                                 </div>
                             ) : (
                                 notifications.map(n => (
                                     <div
                                         key={n.id}
-                                        className={`flex items-start gap-3 p-3 border-b border-neutral-50 hover:bg-neutral-50/80 transition-colors cursor-pointer group ${!n.isRead ? 'bg-blue-50/30' : ''
-                                            } ${selectedIds.includes(n.id) ? 'bg-brand-50/50' : ''}`}
+                                        className={`flex items-start gap-4 p-5 border-b border-neutral-50 hover:bg-neutral-50/50 transition-all cursor-pointer group relative ${!n.isRead ? 'bg-brand-50/20' : ''
+                                            } ${selectedIds.includes(n.id) ? 'bg-brand-50/40' : ''}`}
                                         onClick={(e) => !n.isRead && markAsRead(e, n.id)}
                                     >
-                                        <div
-                                            className={`mt-1 h-5 w-5 rounded border flex items-center justify-center transition-all shrink-0 ${selectedIds.includes(n.id)
-                                                ? 'bg-brand-500 border-brand-500 text-white'
-                                                : 'border-neutral-300 bg-white group-hover:border-brand-400'
+                                        <button
+                                            className={`mt-1.5 h-5 w-5 rounded-lg border-2 flex items-center justify-center transition-all shrink-0 ${selectedIds.includes(n.id)
+                                                ? 'bg-brand-500 border-brand-500 text-white shadow-lg shadow-brand-500/20'
+                                                : 'border-neutral-200 bg-white group-hover:border-brand-300'
                                                 }`}
                                             onClick={(e) => toggleSelect(e, n.id)}
                                         >
                                             {selectedIds.includes(n.id) && <Check size={12} strokeWidth={4} />}
-                                        </div>
-                                        <div className={`mt-1 p-1.5 rounded-full shrink-0 ${n.type === 'OVERDUE' ? 'bg-red-100 text-red-500' : 'bg-blue-100 text-blue-500'
+                                        </button>
+                                        <div className={`mt-0.5 p-2 rounded-xl shrink-0 ${n.type === 'OVERDUE' ? 'bg-red-50 text-red-500' : 'bg-brand-50 text-brand-500'
                                             }`}>
-                                            {n.type === 'OVERDUE' ? <AlertTriangle size={14} /> : <Clock size={14} />}
+                                            {n.type === 'OVERDUE' ? <AlertTriangle size={16} /> : <ShieldAlert size={16} />}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className={`text-sm ${!n.isRead ? 'font-semibold text-neutral-800' : 'text-neutral-600'}`}>
+                                            <p className={`text-sm tracking-tight ${!n.isRead ? 'font-black text-neutral-900' : 'text-neutral-500 font-medium'}`}>
                                                 {n.message}
                                             </p>
-                                            <p className="text-xs text-neutral-400 mt-0.5">{formatTime(n.createdAt)}</p>
+                                            <p className="text-[10px] text-neutral-400 font-black uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                                                <Clock size={10} /> {formatTime(n.createdAt)}
+                                            </p>
                                         </div>
                                         {!n.isRead && !selectedIds.includes(n.id) && (
-                                            <div className="w-2 h-2 rounded-full bg-brand-500 mt-2 shrink-0" />
+                                            <div className="w-2.5 h-2.5 rounded-full bg-brand-500 mt-2.5 shrink-0 shadow-[0_0_10px_rgba(123,104,238,0.5)]" />
                                         )}
                                     </div>
                                 ))

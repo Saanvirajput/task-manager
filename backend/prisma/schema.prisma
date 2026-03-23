@@ -16,10 +16,9 @@ model User {
   password        String?
   googleId        String?          @unique
   name            String?
-  tasks           Task[]
   notifications   Notification[]
-  memberships     WorkspaceMember[]
-  ownedWorkspaces Workspace[]      @relation("OwnedWorkspaces")
+  teamMemberships TeamMember[]
+  ownedTeams      Team[]           @relation("OwnedTeams")
   auditLogs       AuditLog[]
   comments        Comment[]
   mentions        Mention[]
@@ -30,6 +29,9 @@ model User {
   mfaSecret       String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+
+  assignedTasks   Task[]           @relation("AssignedTasks")
+  createdTasks    Task[]           @relation("CreatedTasks")
 }
 
 model Task {
@@ -38,6 +40,7 @@ model Task {
   description       String?
   status            Status         @default(TODO)
   priority          Priority       @default(MEDIUM)
+  visibility        Visibility     @default(TEAM)
   cveId             String?
   attachmentName    String?
   attachmentUrl     String?
@@ -53,41 +56,44 @@ model Task {
   googleEventId     String?
   completedAt       DateTime?
   
-  userId            String
-  user              User           @relation(fields: [userId], references: [id])
+  createdById       String
+  createdBy         User           @relation("CreatedTasks", fields: [createdById], references: [id])
   
-  // Workspace Support
-  workspaceId       String?
-  workspace         Workspace?     @relation(fields: [workspaceId], references: [id])
+  assignedToId      String?
+  assignedTo        User?          @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  
+  teamId            String?
+  team              Team?          @relation(fields: [teamId], references: [id])
 
   // Sub-tasks Support
   parentId          String?
   parent            Task?          @relation("SubTasks", fields: [parentId], references: [id], onDelete: Cascade)
   subTasks          Task[]         @relation("SubTasks")
 
-  // Task Dependencies (Phase 2)
+  // Task Dependencies
   dependsOn         Task[]         @relation("TaskDependencies")
   dependedBy        Task[]         @relation("TaskDependencies")
 
-  // Recurring Tasks (Phase 2)
+  // Recurring Tasks
   recurrence        String?        // "DAILY" | "WEEKLY" | "MONTHLY" | null
   nextOccurrence    DateTime?
 
-  @@index([userId])
+  @@index([createdById])
+  @@index([assignedToId])
   @@index([status])
   @@index([createdAt])
   @@index([parentId])
-  @@index([workspaceId])
+  @@index([teamId])
 }
 
 
-model Workspace {
+model Team {
   id        String           @id @default(uuid())
   name      String
   slug      String           @unique
   ownerId   String
-  owner     User             @relation("OwnedWorkspaces", fields: [ownerId], references: [id])
-  members   WorkspaceMember[]
+  owner     User             @relation("OwnedTeams", fields: [ownerId], references: [id])
+  members   TeamMember[]
   tasks     Task[]
   auditLogs AuditLog[]
   integrations Integration[]
@@ -97,25 +103,31 @@ model Workspace {
   @@index([ownerId])
 }
 
-model WorkspaceMember {
+model TeamMember {
   id          String    @id @default(uuid())
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  teamId      String
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   role        Role      @default(MEMBER)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  @@unique([workspaceId, userId])
-  @@index([workspaceId])
+  @@unique([teamId, userId])
+  @@index([teamId])
   @@index([userId])
 }
 
 enum Role {
   ADMIN
+  MANAGER
   MEMBER
-  VIEWER
+}
+
+enum Visibility {
+  PRIVATE
+  TEAM
+  PUBLIC
 }
 
 enum Status {
@@ -160,12 +172,12 @@ model AuditLog {
   resourceId   String?
   userId       String
   user         User      @relation(fields: [userId], references: [id])
-  workspaceId  String?
-  workspace    Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  teamId       String?
+  team         Team?      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   details      Json?     // Generic payload for before/after state
   createdAt    DateTime  @default(now())
 
-  @@index([workspaceId])
+  @@index([teamId])
   @@index([userId])
   @@index([action])
   @@index([createdAt])
@@ -175,12 +187,12 @@ model Integration {
   id          String    @id @default(uuid())
   type        String    // e.g., "SLACK"
   webhookUrl  String
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  teamId      String
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  @@index([workspaceId])
+  @@index([teamId])
   @@index([type])
 }
 

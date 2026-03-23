@@ -9,7 +9,7 @@ import authRoutes from './routes/auth.routes';
 import taskRoutes from './routes/task.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import notificationRoutes from './routes/notification.routes';
-import workspaceRoutes from './routes/workspace.routes';
+import teamRoutes from './routes/team.routes';
 import auditRoutes from './routes/audit.routes';
 import integrationRoutes from './routes/integration.routes';
 import { errorHandler } from './middleware/error.middleware';
@@ -61,8 +61,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/workspaces', workspaceRoutes);
-app.use('/api/workspaces', auditRoutes);
+app.use('/api/teams', teamRoutes);
+app.use('/api/audit', auditRoutes);
 app.use('/api/integrations', integrationRoutes);
 
 // Start background jobs
@@ -71,7 +71,7 @@ startReminderJob();
 app.get('/api', (req: Request, res: Response) => {
     res.json({
         message: 'Task Management System API',
-        endpoints: ['/api/auth', '/api/tasks', '/api/analytics', '/api/notifications', '/api/workspaces', '/health']
+        endpoints: ['/api/auth', '/api/tasks', '/api/analytics', '/api/notifications', '/api/teams', '/health']
     });
 });
 
