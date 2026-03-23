@@ -2,15 +2,15 @@
     "name": "task-management-system",
     "version": "1.0.0",
     "description": "A professional, data-driven task management system built with Next.js, Node.js, and Neon PostgreSQL.",
+    "workspaces": [
+        "backend",
+        "frontend"
+    ],
     "scripts": {
-        "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-        "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-        "dev:backend": "cd backend && npm run dev",
-        "dev:frontend": "cd frontend && npm run dev",
-        "build": "cd backend && npm run build && cd ../frontend && npm run build",
-        "build:backend": "cd backend && npm run build",
-        "start": "npm run start:backend",
-        "start:backend": "cd backend && npm run start"
+        "install:all": "npm install",
+        "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+        "build": "npm run build --workspaces",
+        "start": "npm run start -w backend"
     },
     "devDependencies": {
         "concurrently": "^8.2.2"
