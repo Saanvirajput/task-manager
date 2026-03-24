@@ -11,10 +11,13 @@ export default function Home() {
   }, [router]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-neutral-50">
-      <div className="text-center">
-        <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-neutral-600 font-medium">Redirecting to login...</p>
+    <div className="flex items-center justify-center min-h-screen bg-white">
+      <div className="flex flex-col items-center gap-4">
+        {/* Notion-style N logo */}
+        <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center">
+          <span className="text-white font-bold text-xl" style={{ fontFamily: 'Georgia, serif' }}>N</span>
+        </div>
+        <div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-800 rounded-full animate-spin"></div>
       </div>
     </div>
   );
