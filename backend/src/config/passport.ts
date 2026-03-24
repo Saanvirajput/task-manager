@@ -14,11 +14,11 @@ if (isPlaceholder(GOOGLE_CLIENT_ID) || isPlaceholder(GOOGLE_CLIENT_SECRET)) {
     passport.use(
         new GoogleStrategy(
             {
-                clientID: GOOGLE_CLIENT_ID,
-                clientSecret: GOOGLE_CLIENT_SECRET,
+                clientID: GOOGLE_CLIENT_ID as string,
+                clientSecret: GOOGLE_CLIENT_SECRET as string,
                 callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback',
             },
-            async (accessToken, refreshToken, profile, done) => {
+            async (accessToken: string, refreshToken: string, profile: any, done: any) => {
                 try {
                     // Check if user already exists with this Google ID
                     let user = await (prisma.user as any).findUnique({
