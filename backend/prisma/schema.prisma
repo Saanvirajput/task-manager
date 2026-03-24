@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -36,8 +36,8 @@ model Task {
   id                String         @id @default(uuid())
   title             String
   description       String?
-  status            Status         @default(TODO)
-  priority          Priority       @default(MEDIUM)
+  status            String         @default("TODO")
+  priority          String         @default("MEDIUM")
   cveId             String?
   attachmentName    String?
   attachmentUrl     String?
@@ -49,7 +49,7 @@ model Task {
   comments          Comment[]
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
-  customFields      Json?          @default("{}")
+  customFields      String?        @default("{}")
   googleEventId     String?
   completedAt       DateTime?
   
@@ -103,7 +103,7 @@ model WorkspaceMember {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role        Role      @default(MEMBER)
+  role        String    @default("MEMBER")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -112,34 +112,10 @@ model WorkspaceMember {
   @@index([userId])
 }
 
-enum Role {
-  ADMIN
-  MEMBER
-  VIEWER
-}
-
-enum Status {
-  TODO
-  IN_PROGRESS
-  DONE
-}
-
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-enum NotificationType {
-  REMINDER
-  OVERDUE
-  MENTION
-}
-
 model Notification {
   id        String           @id @default(uuid())
   message   String
-  type      NotificationType @default(REMINDER)
+  type      String           @default("REMINDER")
   isRead    Boolean          @default(false)
   createdAt DateTime         @default(now())
   
@@ -162,7 +138,7 @@ model AuditLog {
   user         User      @relation(fields: [userId], references: [id])
   workspaceId  String?
   workspace    Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  details      Json?     // Generic payload for before/after state
+  details      String?   // Generic payload for before/after state
   createdAt    DateTime  @default(now())
 
   @@index([workspaceId])
