@@ -156,137 +156,183 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task, teamId, av
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 border border-neutral-200 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-neutral-800">{task ? 'Edit Task' : 'New Task'}</h2>
-                    <button onClick={onClose} className="p-1 hover:bg-neutral-100 rounded-full transition-colors">
-                        <X size={20} className="text-neutral-500" />
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none">
+            <div className="bg-white shadow-2xl max-w-lg w-full p-8 border border-[var(--border)] animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto no-scrollbar">
+                <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-2xl font-bold text-[var(--foreground)] tracking-tight">{task ? 'Edit Task' : 'New Task'}</h2>
+                    <button onClick={onClose} className="p-1.5 hover:bg-[var(--hover)] rounded transition-colors">
+                        <X size={18} className="text-[var(--secondary-foreground)]" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-semibold text-neutral-800 mb-1">Title</label>
-                        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="w-full" placeholder="What needs to be done?" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-semibold text-neutral-800 mb-1">Description</label>
-                        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="w-full resize-none" placeholder="Add more details..." />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-xs font-bold uppercase tracking-wider">
-                        <div>
-                            <label className="block text-neutral-400 mb-1 flex items-center gap-1.5"><Users size={12} /> Assigned To</label>
-                            <select value={assignedToId} onChange={(e) => setAssignedToId(e.target.value)} className="w-full">
-                                <option value="">Select Member</option>
-                                {teamMembers.map((m: any) => (
-                                    <option key={m.userId} value={m.userId}>{m.user?.name || m.user?.email}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-neutral-400 mb-1 flex items-center gap-1.5"><Shield size={12} /> Visibility</label>
-                            <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className="w-full">
-                                <option value="PRIVATE">Private</option>
-                                <option value="TEAM">Team Only</option>
-                                <option value="PUBLIC">Public</option>
-                            </select>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-[var(--secondary-foreground)] uppercase tracking-wider pl-1 font-mono">Title</label>
+                        <div className="p-2 border border-[var(--border)] rounded hover:border-[var(--secondary-foreground)]/30 focus-within:border-[var(--brand)] transition-colors">
+                            <input
+                                type="text"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                required
+                                className="notion-input text-sm font-medium"
+                                placeholder="What needs to be done?"
+                            />
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-semibold text-neutral-800 mb-1">CVE ID / Task Reference</label>
-                        <input type="text" value={cveId} onChange={(e) => setCveId(e.target.value)} className="w-full" placeholder="e.g. CVE-2024-1234" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-semibold text-neutral-800 mb-1">Status</label>
-                            <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full appearance-none">
-                                <option value="TODO">To Do</option>
-                                <option value="IN_PROGRESS">In Progress</option>
-                                <option value="DONE">Done</option>
-                            </select>
+                    <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-[var(--secondary-foreground)] uppercase tracking-wider pl-1 font-mono">Description</label>
+                        <div className="p-2 border border-[var(--border)] rounded hover:border-[var(--secondary-foreground)]/30 focus-within:border-[var(--brand)] transition-colors">
+                            <textarea
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                rows={4}
+                                className="notion-input text-sm resize-none"
+                                placeholder="Add context or notes..."
+                            />
                         </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-neutral-800 mb-1">Priority</label>
-                            <select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full appearance-none">
-                                <option value="LOW">Low</option>
-                                <option value="MEDIUM">Medium</option>
-                                <option value="HIGH">High</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-semibold text-neutral-800 mb-1">Due Date</label>
-                            <input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-neutral-800 mb-1">Reminder Time</label>
-                            <input type="datetime-local" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} className="w-full" />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-semibold text-neutral-800 mb-1">PDF Attachment</label>
-                        <input type="file" onChange={(e) => setAttachment(e.target.files?.[0] || null)} accept=".pdf" className="w-full text-sm" />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-semibold text-neutral-800 mb-1 flex items-center gap-1.5">
-                            <RefreshCw size={14} /> Recurrence
-                        </label>
-                        <select value={recurrence} onChange={(e) => setRecurrence(e.target.value)} className="w-full">
-                            <option value="">None</option>
-                            <option value="DAILY">Daily</option>
-                            <option value="WEEKLY">Weekly</option>
-                            <option value="MONTHLY">Monthly</option>
-                        </select>
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-[var(--secondary-foreground)] uppercase tracking-wider pl-1 font-mono">Assignee</label>
+                            <div className="p-2 border border-[var(--border)] rounded hover:border-[var(--secondary-foreground)]/30 focus-within:border-[var(--brand)] transition-colors">
+                                <select value={assignedToId} onChange={(e) => setAssignedToId(e.target.value)} className="notion-input text-sm appearance-none">
+                                    <option value="">Unassigned</option>
+                                    {teamMembers.map((m: any) => (
+                                        <option key={m.userId} value={m.userId}>{m.user?.name || m.user?.email}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-[var(--secondary-foreground)] uppercase tracking-wider pl-1 font-mono">Priority</label>
+                            <div className="p-2 border border-[var(--border)] rounded hover:border-[var(--secondary-foreground)]/30 focus-within:border-[var(--brand)] transition-colors">
+                                <select value={priority} onChange={(e) => setPriority(e.target.value)} className="notion-input text-sm appearance-none">
+                                    <option value="LOW">Low</option>
+                                    <option value="MEDIUM">Medium</option>
+                                    <option value="HIGH">High</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Custom Fields */}
-                    <div>
-                        <label className="block text-sm font-semibold text-neutral-800 mb-1">Custom Fields</label>
-                        <div className="space-y-2 mb-3">
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-[var(--secondary-foreground)] uppercase tracking-wider pl-1 font-mono">Status</label>
+                            <div className="p-2 border border-[var(--border)] rounded hover:border-[var(--secondary-foreground)]/30 focus-within:border-[var(--brand)] transition-colors">
+                                <select value={status} onChange={(e) => setStatus(e.target.value)} className="notion-input text-sm appearance-none">
+                                    <option value="TODO">To Do</option>
+                                    <option value="IN_PROGRESS">In Progress</option>
+                                    <option value="DONE">Done</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-[var(--secondary-foreground)] uppercase tracking-wider pl-1 font-mono">Visibility</label>
+                            <div className="p-2 border border-[var(--border)] rounded hover:border-[var(--secondary-foreground)]/30 focus-within:border-[var(--brand)] transition-colors">
+                                <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className="notion-input text-sm appearance-none">
+                                    <option value="PRIVATE">Private</option>
+                                    <option value="TEAM">Team</option>
+                                    <option value="PUBLIC">Public</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-[var(--secondary-foreground)] uppercase tracking-wider pl-1 font-mono">Reference (CVE/ID)</label>
+                        <div className="p-2 border border-[var(--border)] rounded hover:border-[var(--secondary-foreground)]/30 focus-within:border-[var(--brand)] transition-colors">
+                            <input
+                                type="text"
+                                value={cveId}
+                                onChange={(e) => setCveId(e.target.value)}
+                                className="notion-input text-sm"
+                                placeholder="e.g. CVE-2024-XXXX"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-[var(--secondary-foreground)] uppercase tracking-wider pl-1 font-mono">Due Date</label>
+                            <div className="p-2 border border-[var(--border)] rounded hover:border-[var(--secondary-foreground)]/30 focus-within:border-[var(--brand)] transition-colors">
+                                <input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="notion-input text-xs" />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-[var(--secondary-foreground)] uppercase tracking-wider pl-1 font-mono">Reminder</label>
+                            <div className="p-2 border border-[var(--border)] rounded hover:border-[var(--secondary-foreground)]/30 focus-within:border-[var(--brand)] transition-colors">
+                                <input type="datetime-local" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} className="notion-input text-xs" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-[var(--secondary-foreground)] uppercase tracking-wider pl-1 font-mono">Recurrence</label>
+                        <div className="p-2 border border-[var(--border)] rounded hover:border-[var(--secondary-foreground)]/30 focus-within:border-[var(--brand)] transition-colors">
+                            <select value={recurrence} onChange={(e) => setRecurrence(e.target.value)} className="notion-input text-sm appearance-none">
+                                <option value="">None</option>
+                                <option value="DAILY">Daily</option>
+                                <option value="WEEKLY">Weekly</option>
+                                <option value="MONTHLY">Monthly</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4 pt-4">
+                        <label className="text-[11px] font-bold text-[var(--secondary-foreground)] uppercase tracking-wider pl-1 font-mono">Custom Fields</label>
+                        <div className="space-y-2">
                             {Object.entries(customFields).map(([key, value]) => (
-                                <div key={key} className="flex items-center gap-2 bg-neutral-50 p-2 rounded-lg border border-neutral-100">
-                                    <span className="text-xs font-black text-neutral-400 uppercase w-24 truncate">{key}:</span>
-                                    <span className="text-sm text-neutral-700 flex-1 truncate">{value}</span>
-                                    <button onClick={() => removeCustomField(key)} className="text-neutral-300 hover:text-red-500">
+                                <div key={key} className="flex items-center gap-2 group">
+                                    <div className="flex-1 flex items-center border border-[var(--border)] rounded overflow-hidden">
+                                        <span className="bg-[var(--hover)] text-[10px] font-bold px-2 py-1.5 border-r border-[var(--border)] min-w-[80px] text-center uppercase tracking-tighter">{key}</span>
+                                        <span className="text-xs px-2 py-1.5 flex-1 truncate">{value}</span>
+                                    </div>
+                                    <button onClick={() => removeCustomField(key)} className="p-1.5 text-red-400 hover:bg-red-50 rounded transition-colors">
                                         <Trash2 size={14} />
                                     </button>
                                 </div>
                             ))}
                         </div>
                         <div className="flex gap-2">
-                            <input type="text" placeholder="Key" value={newFieldKey} onChange={(e) => setNewFieldKey(e.target.value)} className="w-1/3 text-xs" />
-                            <input type="text" placeholder="Value" value={newFieldValue} onChange={(e) => setNewFieldValue(e.target.value)} className="flex-1 text-xs" />
-                            <button type="button" onClick={addCustomField} className="p-2 bg-neutral-100 rounded-lg"><Plus size={16} /></button>
+                            <input type="text" placeholder="Key" value={newFieldKey} onChange={(e) => setNewFieldKey(e.target.value)} className="flex-1 p-2 border border-[var(--border)] rounded text-xs focus:border-[var(--brand)] outline-none" />
+                            <input type="text" placeholder="Value" value={newFieldValue} onChange={(e) => setNewFieldValue(e.target.value)} className="flex-1 p-2 border border-[var(--border)] rounded text-xs focus:border-[var(--brand)] outline-none" />
+                            <button type="button" onClick={addCustomField} className="notion-button px-3"><Plus size={16} /></button>
                         </div>
                     </div>
 
-                    <button type="submit" className="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-md shadow-lg transition-all mt-4">
-                        {task ? 'Update' : 'Create'} Task
+                    <button
+                        type="submit"
+                        className="w-full h-11 bg-[var(--foreground)] text-[var(--background)] font-semibold rounded hover:opacity-90 transition-all shadow-sm active:scale-[0.98] mt-8"
+                    >
+                        {task ? 'Update workspace task' : 'Establish new task'}
                     </button>
                 </form>
 
-                <div className="mt-8 pt-6 border-t border-neutral-100">
-                    <h3 className="text-sm font-bold text-neutral-800 mb-4 flex items-center gap-2">Sub-tasks</h3>
-                    <div className="space-y-2 mb-4">
+                <div className="mt-12 pt-8 border-t border-[var(--border)]">
+                    <h3 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-[0.1em] mb-6 flex items-center gap-2">
+                        <Link2 size={14} className="text-[var(--secondary-foreground)]" /> Associated Sub-tasks
+                    </h3>
+                    <div className="space-y-1">
                         {subTasks.map(sub => (
-                            <div key={sub.id} className="flex items-center justify-between group p-2 rounded-lg hover:bg-neutral-50">
+                            <div key={sub.id} className="flex items-center justify-between group p-2 rounded hover:bg-[var(--hover)] transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <button onClick={() => toggleSubTaskStatus(sub)} className="text-neutral-400">
-                                        {sub.status === 'DONE' ? <CheckCircle2 size={18} className="text-green-500" /> : <Circle size={18} />}
+                                    <button onClick={() => toggleSubTaskStatus(sub)} className="transition-colors">
+                                        {sub.status === 'DONE' ? <CheckCircle2 size={18} className="text-green-500" /> : <Circle size={18} className="text-[var(--border)]" />}
                                     </button>
-                                    <span className={`text-sm ${sub.status === 'DONE' ? 'text-neutral-400 line-through' : 'text-neutral-700'}`}>{sub.title}</span>
+                                    <span className={`text-sm ${sub.status === 'DONE' ? 'text-[var(--secondary-foreground)] line-through' : 'text-[var(--foreground)]'}`}>{sub.title}</span>
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {task && <TaskComments taskId={task.id} teamId={teamId} />}
+                {task && (
+                    <div className="mt-8">
+                        <TaskComments taskId={task.id} teamId={teamId} />
+                    </div>
+                )}
             </div>
         </div>
     );

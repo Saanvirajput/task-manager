@@ -37,37 +37,42 @@ export default function CreateTeamModal({ isOpen, onClose, onSuccess }: CreateTe
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-neutral-200 animate-in fade-in zoom-in duration-300">
-                <div className="flex justify-between items-center mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center text-brand-600">
-                            <Users size={24} />
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4 select-none">
+            <div className="bg-white shadow-2xl max-w-md w-full p-10 border border-[var(--border)] animate-in fade-in zoom-in duration-300 rounded-lg">
+                <div className="flex justify-between items-center mb-8">
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-[var(--hover)] rounded flex items-center justify-center text-[var(--foreground)]">
+                            <Users size={20} />
                         </div>
-                        <h2 className="text-2xl font-black text-neutral-800 tracking-tight">New Team</h2>
+                        <h2 className="text-2xl font-bold text-[var(--foreground)] tracking-tight">New Workspace</h2>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
-                        <X size={20} className="text-neutral-400" />
+                    <button onClick={onClose} className="p-2 hover:bg-[var(--hover)] rounded transition-colors">
+                        <X size={20} className="text-[var(--secondary-foreground)]" />
                     </button>
                 </div>
 
-                <p className="text-neutral-500 mb-8 font-medium">Create a dedicated space for your team, project, or department.</p>
+                <p className="text-[var(--secondary-foreground)] mb-10 font-medium text-xs leading-relaxed">
+                    Initialize a dedicated workspace for your team, department, or specialized operations.
+                </p>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Team Name</label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            placeholder="e.g. Engineering, Cyber-Defense, GlobalOps"
-                            className="w-full text-lg font-bold py-3 px-4 rounded-xl border-2 border-neutral-100 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all outline-none"
-                            required
-                        />
+                <form onSubmit={handleSubmit} className="space-y-8">
+                    <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-[var(--secondary-foreground)] uppercase tracking-[0.15em] pl-1 font-mono">Workspace Identifier</label>
+                        <div className="p-3 border border-[var(--border)] rounded hover:border-[var(--secondary-foreground)]/30 focus-within:border-[var(--brand)] transition-colors">
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="e.g. Engineering, global-ops"
+                                className="w-full text-base font-medium outline-none notion-input bg-transparent"
+                                required
+                                autoFocus
+                            />
+                        </div>
                     </div>
 
                     {error && (
-                        <p className="text-red-500 text-xs font-bold bg-red-50 p-3 rounded-xl border border-red-100 animate-shake">
+                        <p className="text-red-500 text-[11px] font-bold bg-red-50 p-4 rounded border border-red-100 uppercase tracking-widest animate-shake">
                             {error}
                         </p>
                     )}
@@ -75,9 +80,9 @@ export default function CreateTeamModal({ isOpen, onClose, onSuccess }: CreateTe
                     <button
                         type="submit"
                         disabled={loading || !name.trim()}
-                        className="w-full py-4 bg-brand-500 hover:bg-brand-600 disabled:bg-neutral-200 disabled:text-neutral-400 text-white font-black rounded-xl shadow-xl shadow-brand-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 uppercase tracking-widest text-sm"
+                        className="w-full h-12 bg-[var(--foreground)] text-[var(--background)] disabled:opacity-30 font-bold rounded hover:opacity-90 transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs active:scale-[0.98]"
                     >
-                        {loading ? <Loader2 className="animate-spin" size={20} /> : 'Initialize Team'}
+                        {loading ? <Loader2 className="animate-spin" size={18} /> : 'Initialize Team'}
                     </button>
                 </form>
             </div>

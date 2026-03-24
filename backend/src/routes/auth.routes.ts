@@ -21,14 +21,25 @@ router.put('/calendar-sync', authMiddleware, updateCalendarSync);
 const isGoogleConfigured = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
 router.get('/google', (req, res, next) => {
-    if (!isGoogleConfigured) {
-        return res.status(503).json({ error: 'Google SSO is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on Railway.' });
+    const isConfigured = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+    if (!isConfigured) {
+        return res.status(503).json({
+            error: 'Google Authentication is not configured.',
+            details: 'Please ensure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set in your environment variables. Refer to deployment_keys.md for setup instructions.'
+        });
     }
-    passport.authenticate('google', {
-        scope: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.events'],
-        accessType: 'offline',
-        prompt: 'consent'
-    })(req, res, next);
+
+    // Ensure passport has the strategy before authenticating
+    try {
+        passport.authenticate('google', {
+            scope: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.events'],
+            accessType: 'offline',
+            prompt: 'consent'
+        })(req, res, next);
+    } catch (err) {
+        console.error('Passport Google Auth Error:', err);
+        res.status(500).json({ error: 'Failed to initialize Google authentication.' });
+    }
 });
 
 router.get('/google/callback', (req, res, next) => {

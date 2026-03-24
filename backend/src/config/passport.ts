@@ -5,9 +5,11 @@ import prisma from '../utils/prisma';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
-if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    console.error('⚠️ [OAUTH ERROR]: GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is not set in the environment.');
-    console.error('👉 Google SSO and Calendar synchronization will be disabled until these variables are added to Railway/Local env.');
+const isPlaceholder = (val?: string) => !val || val.includes('PLACEHOLDER');
+
+if (isPlaceholder(GOOGLE_CLIENT_ID) || isPlaceholder(GOOGLE_CLIENT_SECRET)) {
+    console.warn('⚠️ [OAUTH CONFIG]: Google OAuth is not yet configured with valid keys.');
+    console.warn('👉 Visit the Google Cloud Console and update your .env or Railway variables.');
 } else {
     passport.use(
         new GoogleStrategy(

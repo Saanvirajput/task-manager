@@ -121,38 +121,40 @@ export default function ImportModal({ isOpen, onClose, onSuccess, teamId }: any)
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-xl z-[60] flex items-center justify-center p-4 transition-all duration-500">
-            <div className="bg-white rounded-[2rem] shadow-2xl max-w-2xl w-full flex flex-col max-h-[90vh] overflow-hidden border border-neutral-200 animate-in fade-in zoom-in slide-in-from-bottom-8 duration-500">
-                {/* Header */}
-                <div className="p-8 border-b border-neutral-100 flex justify-between items-center bg-white">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <div className="bg-white shadow-2xl max-w-2xl w-full flex flex-col max-h-[90vh] overflow-hidden border border-[var(--border)] animate-in fade-in zoom-in slide-in-from-bottom-8 duration-500 rounded-lg">
+                <div className="p-8 border-b border-[var(--border)] flex justify-between items-center">
                     <div>
-                        <h2 className="text-2xl font-black text-neutral-900 tracking-tighter flex items-center gap-3">
-                            <ShieldPlus className="text-brand-500" size={28} />
-                            {status === 'SUCCESS' ? 'Mission Success' : 'AI Intel Ingestion'}
+                        <h2 className="text-2xl font-bold text-[var(--foreground)] tracking-tight flex items-center gap-3">
+                            <ShieldPlus className="text-[var(--foreground)]" size={24} />
+                            {status === 'SUCCESS' ? 'Import Complete' : 'AI Intel Ingestion'}
                         </h2>
-                        <p className="text-[10px] text-neutral-400 font-black uppercase tracking-widest mt-1">Autonomous Task Extraction Protocol ✨</p>
+                        <p className="text-[10px] text-[var(--secondary-foreground)] font-bold uppercase tracking-widest mt-1">Autonomous Task Extraction Protocol</p>
                     </div>
-                    <button onClick={onClose} className="p-3 hover:bg-neutral-100 rounded-2xl transition-all">
-                        <X size={20} className="text-neutral-400" />
+                    <button onClick={onClose} className="p-2 hover:bg-[var(--hover)] rounded transition-colors">
+                        <X size={20} className="text-[var(--secondary-foreground)]" />
                     </button>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-10">
+                <div className="flex-1 overflow-y-auto p-10 no-scrollbar">
                     {status === 'IDLE' && (
                         <div className="space-y-8">
-                            <div className="border-4 border-dashed border-neutral-100 rounded-3xl p-16 flex flex-col items-center justify-center bg-neutral-50/30 hover:bg-white hover:border-brand-200 transition-all cursor-pointer group relative shadow-inner">
+                            <div className="border border-dashed border-[var(--border)] rounded-lg p-16 flex flex-col items-center justify-center bg-[var(--background)] hover:border-[var(--secondary-foreground)]/50 transition-all cursor-pointer group relative">
                                 <input type="file" onChange={handleFileChange} accept=".pdf" className="absolute inset-0 opacity-0 cursor-pointer" />
-                                <div className="w-20 h-20 bg-brand-50 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-all shadow-sm">
-                                    <FileText className="text-brand-500" size={40} />
+                                <div className="w-16 h-16 bg-[var(--hover)] rounded flex items-center justify-center mb-6 transition-transform group-hover:scale-105">
+                                    <FileText className="text-[var(--foreground)]" size={32} />
                                 </div>
-                                <h3 className="font-black text-neutral-800 text-xl tracking-tight">{file ? file.name : 'Drop Intel PDF Here'}</h3>
-                                <p className="text-neutral-400 text-xs font-black uppercase tracking-widest mt-2 px-6 py-1 bg-neutral-50 rounded-full">Encrypted Transport Active</p>
+                                <h3 className="font-bold text-[var(--foreground)] text-lg tracking-tight">{file ? file.name : 'Click to select Intel PDF'}</h3>
+                                <p className="text-[11px] text-[var(--secondary-foreground)] font-bold uppercase tracking-wider mt-2">PDF FORMAT REQUIRED</p>
                             </div>
 
                             {file && (
-                                <button onClick={handleExtract} disabled={loading} className="w-full py-5 bg-black text-white font-black rounded-2xl shadow-2xl shadow-black/20 transition-all active:scale-95 flex items-center justify-center gap-3 uppercase tracking-widest text-sm">
-                                    {loading ? <Loader2 className="animate-spin" size={20} /> : 'Execute AI Parsing'}
+                                <button
+                                    onClick={handleExtract}
+                                    disabled={loading}
+                                    className="w-full h-12 bg-[var(--foreground)] text-[var(--background)] font-bold rounded hover:opacity-90 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs active:scale-[0.98]"
+                                >
+                                    {loading ? <Loader2 className="animate-spin" size={18} /> : 'Extract Tasks'}
                                 </button>
                             )}
                         </div>
@@ -160,84 +162,83 @@ export default function ImportModal({ isOpen, onClose, onSuccess, teamId }: any)
 
                     {status === 'EXTRACTING' && (
                         <div className="py-24 flex flex-col items-center justify-center space-y-6">
-                            <div className="relative">
-                                <div className="w-20 h-20 border-4 border-brand-50 border-t-brand-500 rounded-full animate-spin"></div>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <Loader2 className="text-brand-500 animate-pulse" size={32} />
-                                </div>
-                            </div>
+                            <Loader2 className="text-[var(--foreground)] animate-spin" size={48} />
                             <div className="text-center">
-                                <h3 className="text-xl font-black text-neutral-900 tracking-tight italic">Analyzing Personnel Directives...</h3>
-                                <p className="text-[10px] text-neutral-400 font-black uppercase tracking-widest mt-2">Neural Net Integration Active ✨</p>
+                                <h3 className="text-xl font-bold text-[var(--foreground)] tracking-tight">Analyzing Directives...</h3>
+                                <p className="text-[10px] text-[var(--secondary-foreground)] font-bold uppercase tracking-widest mt-2">Neural Link Active</p>
                             </div>
                         </div>
                     )}
 
                     {status === 'PREVIEW' && (
                         <div className="space-y-8">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <h3 className="font-black text-neutral-900 uppercase tracking-widest text-xs">Directives Identified ({previewTasks.length})</h3>
-                                    <button onClick={toggleAll} className="text-[10px] font-black text-brand-600 bg-brand-50 px-3 py-1.5 rounded-xl transition-all uppercase tracking-widest hover:shadow-md">
-                                        {selectedIndices.size === previewTasks.length ? 'Clear' : 'Check All'}
+                            <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
+                                <h3 className="font-bold text-[var(--foreground)] uppercase tracking-widest text-[10px]">Directives Identified ({previewTasks.length})</h3>
+                                <div className="flex gap-4">
+                                    <button onClick={toggleAll} className="text-[10px] font-bold text-[var(--foreground)] hover:underline decoration-[var(--border)] underline-offset-4 uppercase">
+                                        {selectedIndices.size === previewTasks.length ? 'Deselect All' : 'Select All'}
                                     </button>
+                                    <button onClick={reset} className="text-[10px] font-bold text-red-500 hover:underline decoration-red-200 underline-offset-4 uppercase">Reset</button>
                                 </div>
-                                <button onClick={reset} className="text-[10px] font-black text-neutral-400 hover:text-red-500 transition-colors uppercase tracking-widest">Abort</button>
                             </div>
                             <div className="space-y-3">
                                 {previewTasks.map((task, idx) => (
-                                    <label key={idx} className={`p-5 rounded-2xl transition-all flex gap-5 cursor-pointer items-start border-2 ${selectedIndices.has(idx) ? 'bg-white border-brand-500 shadow-lg' : 'bg-neutral-50/50 border-transparent text-neutral-400 opacity-60'}`}>
-                                        <div className="pt-1.5">
+                                    <label key={idx} className={`p-4 rounded border transition-all flex gap-4 cursor-pointer items-start ${selectedIndices.has(idx) ? 'bg-white border-[var(--foreground)]' : 'bg-[var(--background)] border-[var(--border)] opacity-60'}`}>
+                                        <div className="pt-1">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedIndices.has(idx)}
                                                 onChange={() => toggleSelection(idx)}
-                                                className="w-5 h-5 text-brand-500 rounded-lg border-neutral-300 focus:ring-0 cursor-pointer"
+                                                className="w-4 h-4 rounded border-[var(--border)] text-[var(--foreground)] focus:ring-0 cursor-pointer"
                                             />
                                         </div>
                                         <div className="flex-1">
-                                            <div className="font-black text-neutral-800 tracking-tight">{task.title}</div>
-                                            <div className="text-[10px] font-medium leading-relaxed line-clamp-2 mt-1 uppercase tracking-tight">{task.description || 'No detailed directive found.'}</div>
+                                            <div className="font-bold text-sm text-[var(--foreground)] tracking-tight">{task.title}</div>
+                                            <div className="text-[11px] text-[var(--secondary-foreground)] leading-relaxed mt-1 line-clamp-2">{task.description || 'No detailed directive found.'}</div>
                                         </div>
-                                        <span className={`px-3 py-1 rounded-xl text-[10px] font-black tracking-widest uppercase border ${task.priority === 'HIGH' ? 'bg-red-50 text-red-600 border-red-100' :
-                                            task.priority === 'MEDIUM' ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-brand-50 text-brand-600 border-brand-100'
+                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold tracking-widest uppercase border ${task.priority === 'HIGH' ? 'bg-red-50 text-red-600 border-red-100' :
+                                            task.priority === 'MEDIUM' ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-[var(--hover)] text-[var(--foreground)] border-[var(--border)]'
                                             }`}>
                                             {task.priority}
                                         </span>
                                     </label>
                                 ))}
                             </div>
-                            <button onClick={handleImport} disabled={loading || selectedIndices.size === 0} className={`w-full py-5 text-white font-black rounded-2xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3 uppercase tracking-widest text-sm ${selectedIndices.size === 0 ? 'bg-neutral-200 cursor-not-allowed text-neutral-400' : 'bg-black hover:shadow-brand-500/10'}`}>
-                                {loading ? <Loader2 className="animate-spin" size={20} /> : `Commit ${selectedIndices.size} Strategic Unit${selectedIndices.size === 1 ? '' : 's'}`}
+                            <button
+                                onClick={handleImport}
+                                disabled={loading || selectedIndices.size === 0}
+                                className={`w-full h-12 text-[var(--background)] font-bold rounded shadow-sm transition-all active:scale-[0.98] flex items-center justify-center gap-3 uppercase tracking-widest text-xs ${selectedIndices.size === 0 ? 'bg-[var(--border)] cursor-not-allowed' : 'bg-[var(--foreground)] hover:opacity-90'}`}
+                            >
+                                {loading ? <Loader2 className="animate-spin" size={18} /> : `Commit ${selectedIndices.size} Strategic Units`}
                             </button>
                         </div>
                     )}
 
                     {status === 'IMPORTING' && (
                         <div className="py-24 flex flex-col items-center justify-center space-y-6">
-                            <Loader2 className="text-brand-500 animate-spin" size={60} />
+                            <Loader2 className="text-[var(--foreground)] animate-spin" size={48} />
                             <div className="text-center">
-                                <h3 className="text-xl font-black text-neutral-900 tracking-tight">Syncing Operational Ledger...</h3>
-                                <p className="text-[10px] text-neutral-400 font-black uppercase tracking-widest mt-2">Database Integrity verified 🔗</p>
+                                <h3 className="text-xl font-bold text-[var(--foreground)] tracking-tight">Syncing Operational Ledger...</h3>
+                                <p className="text-[10px] text-[var(--secondary-foreground)] font-bold uppercase tracking-widest mt-2">Database Integrity Verified</p>
                             </div>
                         </div>
                     )}
 
                     {status === 'SUCCESS' && (
                         <div className="py-20 flex flex-col items-center justify-center space-y-6 text-center">
-                            <div className="w-24 h-24 bg-brand-50 rounded-[2rem] flex items-center justify-center animate-bounce shadow-xl">
-                                <CheckCircle2 className="text-brand-500" size={56} />
+                            <div className="w-20 h-20 bg-[var(--hover)] rounded-full flex items-center justify-center animate-bounce">
+                                <CheckCircle2 className="text-green-500" size={40} />
                             </div>
                             <div>
-                                <h3 className="font-black text-neutral-900 text-3xl tracking-tighter">Strategic Victory</h3>
-                                <p className="text-neutral-500 font-bold uppercase tracking-widest text-[10px] mt-2">All Directives successfully Integrated.</p>
+                                <h3 className="font-bold text-[var(--foreground)] text-2xl tracking-tight">Import Successful</h3>
+                                <p className="text-[var(--secondary-foreground)] font-medium text-sm mt-1">All directives have been integrated into your workspace.</p>
                             </div>
                         </div>
                     )}
 
                     {error && (
-                        <div className="mt-6 p-5 bg-red-50 border-2 border-red-100 rounded-2xl flex items-center gap-4 text-red-600 text-xs font-black uppercase tracking-widest animate-shake">
-                            <AlertCircle size={24} />
+                        <div className="mt-6 p-4 bg-red-50 border border-red-100 rounded text-red-600 text-[11px] font-bold uppercase tracking-widest flex items-center gap-3">
+                            <AlertCircle size={16} />
                             {error}
                         </div>
                     )}
