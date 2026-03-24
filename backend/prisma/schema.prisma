@@ -38,9 +38,14 @@ model Task {
   id                String         @id @default(uuid())
   title             String
   description       String?
+<<<<<<< HEAD
+  status            Status         @default(TODO)
+  priority          Priority       @default(MEDIUM)
+  visibility        Visibility     @default(TEAM)
+=======
   status            String         @default("TODO")
   priority          String         @default("MEDIUM")
-  visibility        String         @default("TEAM")
+>>>>>>> development
   cveId             String?
   attachmentName    String?
   attachmentUrl     String?
@@ -118,6 +123,39 @@ model TeamMember {
   @@index([userId])
 }
 
+<<<<<<< HEAD
+enum Role {
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+enum Visibility {
+  PRIVATE
+  TEAM
+  PUBLIC
+}
+
+enum Status {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum NotificationType {
+  REMINDER
+  OVERDUE
+  MENTION
+}
+
+=======
+>>>>>>> development
 model Notification {
   id        String           @id @default(uuid())
   message   String
@@ -142,9 +180,15 @@ model AuditLog {
   resourceId   String?
   userId       String
   user         User      @relation(fields: [userId], references: [id])
+<<<<<<< HEAD
   teamId       String?
   team         Team?      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  details      Json?     // Generic payload for before/after state
+=======
+  workspaceId  String?
+  workspace    Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   details      String?   // Generic payload for before/after state
+>>>>>>> development
   createdAt    DateTime  @default(now())
 
   @@index([teamId])

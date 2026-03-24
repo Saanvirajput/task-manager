@@ -8,10 +8,16 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
+<<<<<<< HEAD
+    LayoutDashboard, ListTodo, CheckCircle2, Clock,
+    Search, Plus, LogOut, ChevronLeft, ChevronRight,
+    Filter, Calendar, ArrowUpRight, FileText, Paperclip, Check, BarChart3, Table2, Settings, Users
+=======
   LayoutDashboard, ListTodo, CheckCircle2, Clock,
   Search, Plus, LogOut, ChevronLeft, ChevronRight,
-  Filter, Calendar, ArrowUpRight, FileText, Paperclip, Check,
-  BarChart3, Table2, Settings, Users, ChevronDown
+  Calendar, ArrowUpRight, FileText, Paperclip, Check,
+  BarChart3, Table2, Settings, ChevronDown
+>>>>>>> development
 } from 'lucide-react';
 import TaskModal from '@/components/TaskModal';
 import ImportModal from '@/components/ImportModal';
@@ -22,15 +28,334 @@ import UserSettingsModal from '@/components/UserSettingsModal';
 import WorkloadAnalytics from '@/components/WorkloadAnalytics';
 import confetti from 'canvas-confetti';
 
+<<<<<<< HEAD
+
+export default function DashboardPage() {
+    const { user, logout, loading: authLoading } = useAuth();
+    const router = useRouter();
+
+    const [tasks, setTasks] = useState([]);
+    const [analytics, setAnalytics] = useState<any>(null);
+    const [search, setSearch] = useState('');
+    const [status, setStatus] = useState('');
+    const [priority, setPriority] = useState('');
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
+    const [editingTask, setEditingTask] = useState(null);
+    const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+    const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
+    const [activeTeam, setActiveTeam] = useState<any>(null);
+    const [viewMode, setViewMode] = useState<'table' | 'gantt'>('table');
+    const [showAnalytics, setShowAnalytics] = useState(false);
+
+    const fetchDashboardData = useCallback(async () => {
+        try {
+            const [tasksRes, analyticsRes] = await Promise.all([
+                api.get('/tasks', {
+                    params: {
+                        search,
+                        status,
+                        priority,
+                        page,
+                        limit: 10,
+                        teamId: activeTeamId || undefined
+                    }
+                }),
+                api.get('/analytics/overview')
+            ]);
+            setTasks(tasksRes.data.tasks);
+            setTotalPages(tasksRes.data.pagination.totalPages);
+            setAnalytics(analyticsRes.data);
+
+            if (activeTeamId) {
+                const teamRes = await api.get(`/teams/${activeTeamId}`);
+                setActiveTeam(teamRes.data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch data', error);
+        }
+    }, [search, status, priority, page, activeTeamId]);
+
+    useEffect(() => {
+        if (!authLoading && !user) router.push('/login');
+        if (user) fetchDashboardData();
+    }, [user, authLoading, fetchDashboardData, router]);
+
+    const handleDelete = async () => {
+        if (deletingTaskId) {
+            await api.delete(`/tasks/${deletingTaskId}`);
+            setDeletingTaskId(null);
+            fetchDashboardData();
+        }
+    };
+
+    const toggleTaskStatus = async (task: any) => {
+        const newStatus = task.status === 'DONE' ? 'TODO' : 'DONE';
+
+        setTasks((prev: any) => prev.map((t: any) =>
+            t.id === task.id ? { ...t, status: newStatus } : t
+        ));
+
+        try {
+            if (newStatus === 'DONE') {
+                confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#7b68ee', '#22c55e', '#3b82f6', '#f59e0b']
+                });
+            }
+
+            await api.put(`/tasks/${task.id}`, {
+                ...task,
+                status: newStatus
+            });
+            fetchDashboardData();
+        } catch (error) {
+            console.error('Failed to update task status', error);
+            setTasks((prev: any) => prev.map((t: any) =>
+                t.id === task.id ? { ...t, status: task.status } : t
+            ));
+        }
+    };
+
+    if (authLoading || !user) return null;
+
+    return (
+        <>
+            <div className="space-y-12">
+                {/* Header */}
+                <header className="flex justify-between items-end">
+                    <div>
+                        <h1 className="text-3xl font-bold text-[var(--foreground)] tracking-tight">Dashboard</h1>
+                        <p className="text-[var(--secondary-foreground)] text-sm mt-1">Manage your team and track your productivity window.</p>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                        <button
+                            onClick={() => setIsImportModalOpen(true)}
+                            className="notion-button flex items-center gap-2"
+                        >
+                            <FileText size={16} />
+                            <span>Import</span>
+                        </button>
+                        <button
+                            onClick={() => { setEditingTask(null); setIsModalOpen(true); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--foreground)] text-[var(--background)] rounded font-medium text-sm hover:opacity-90 transition-opacity"
+                        >
+                            <Plus size={16} />
+                            <span>New Task</span>
+                        </button>
+                    </div>
+                </header>
+
+                {/* Quick Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {[
+                        { label: 'Total Tasks', val: analytics?.totalTasks || 0, icon: ListTodo },
+                        { label: 'Completed', val: analytics?.completedTasks || 0, icon: CheckCircle2 },
+                        { label: 'Pending', val: analytics?.pendingTasks || 0, icon: Clock },
+                        { label: 'Success Rate', val: `${analytics?.completionRate || 0}%`, icon: ArrowUpRight }
+                    ].map((card, i) => (
+                        <div key={i} className="notion-card p-4 flex flex-col justify-between h-24">
+                            <div className="flex items-center gap-2 text-[var(--secondary-foreground)]">
+                                <card.icon size={14} />
+                                <span className="text-[10px] font-bold uppercase tracking-wider">{card.label}</span>
+                            </div>
+                            <div className="text-2xl font-semibold text-[var(--foreground)]">{card.val}</div>
+                        </div>
+                    ))}
+                </div>
+
+                {showAnalytics && activeTeamId ? (
+                    <WorkloadAnalytics teamId={activeTeamId} />
+                ) : (
+                    <div className="space-y-10">
+                        {/* Analytics Chart */}
+                        <div className="notion-card p-6">
+                            <h3 className="font-semibold text-sm text-[var(--foreground)] mb-6 flex items-center gap-2">
+                                <Calendar size={16} /> Performance Analytics (7D)
+                            </h3>
+                            <div className="h-48">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={analytics?.tasksCreatedPerDay || []}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                        <XAxis dataKey="date" stroke="var(--secondary-foreground)" fontSize={10} tickFormatter={(val) => new Date(val).toLocaleDateString()} />
+                                        <YAxis hide />
+                                        <Tooltip contentStyle={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: '4px', fontSize: '12px' }} />
+                                        <Line type="monotone" dataKey="count" stroke="var(--brand)" strokeWidth={2} dot={{ r: 3, fill: 'var(--brand)' }} activeDot={{ r: 5 }} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Task Database View */}
+                        <section className="space-y-4">
+                            <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
+                                <div className="flex items-center gap-4">
+                                    <button onClick={() => setViewMode('table')} className={`text-sm font-medium transition-colors ${viewMode === 'table' ? 'text-[var(--foreground)] border-b-2 border-[var(--foreground)]' : 'text-[var(--secondary-foreground)] hover:text-[var(--foreground)]'}`}>
+                                        Grid View
+                                    </button>
+                                    <button onClick={() => setViewMode('gantt')} className={`text-sm font-medium transition-colors ${viewMode === 'gantt' ? 'text-[var(--foreground)] border-b-2 border-[var(--foreground)]' : 'text-[var(--secondary-foreground)] hover:text-[var(--foreground)]'}`}>
+                                        Gantt View
+                                    </button>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="relative group">
+                                        <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-[var(--secondary-foreground)]" />
+                                        <input
+                                            type="text"
+                                            placeholder="Filter tasks..."
+                                            className="text-xs bg-[var(--hover)] border border-transparent rounded px-7 py-1 w-40 focus:bg-[var(--background)] focus:border-[var(--brand)] transition-all outline-none"
+                                            value={search}
+                                            onChange={(e) => setSearch(e.target.value)}
+                                        />
+                                    </div>
+                                    <select value={status} onChange={(e) => setStatus(e.target.value)} className="notion-button text-[11px] bg-transparent">
+                                        <option value="">Status</option>
+                                        <option value="TODO">To Do</option>
+                                        <option value="IN_PROGRESS">Progress</option>
+                                        <option value="DONE">Done</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {viewMode === 'gantt' ? (
+                                <GanttChart tasks={tasks} onTaskClick={(t: any) => { setEditingTask(t); setIsModalOpen(true); }} />
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-[13px] border-collapse">
+                                        <thead>
+                                            <tr className="text-[var(--secondary-foreground)] font-normal text-left">
+                                                <th className="px-2 py-2 border-b border-[var(--border)] w-8"></th>
+                                                <th className="px-2 py-2 border-b border-[var(--border)] font-normal">Objective</th>
+                                                <th className="px-2 py-2 border-b border-[var(--border)] font-normal">Assignee</th>
+                                                <th className="px-2 py-2 border-b border-[var(--border)] font-normal">Status</th>
+                                                <th className="px-2 py-2 border-b border-[var(--border)] font-normal">Priority</th>
+                                                <th className="px-2 py-2 border-b border-[var(--border)] font-normal text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-[var(--border)]">
+                                            {tasks.map((task: any) => (
+                                                <tr key={task.id} className="group hover:bg-[var(--hover)] transition-colors">
+                                                    <td className="px-2 py-3">
+                                                        <button
+                                                            onClick={() => toggleTaskStatus(task)}
+                                                            className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${task.status === 'DONE' ? 'bg-green-500 border-green-500 text-white' : 'border-[var(--secondary-foreground)]/50 group-hover:border-[var(--brand)]'}`}
+                                                        >
+                                                            {task.status === 'DONE' && <Check size={10} strokeWidth={4} />}
+                                                        </button>
+                                                    </td>
+                                                    <td className="px-2 py-3">
+                                                        <div className={`font-medium ${task.status === 'DONE' ? 'text-[var(--secondary-foreground)] line-through' : 'text-[var(--foreground)]'}`}>{task.title}</div>
+                                                    </td>
+                                                    <td className="px-2 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-5 h-5 rounded bg-[var(--hover)] flex items-center justify-center text-[10px] font-medium border border-[var(--border)]">
+                                                                {(task.assignedTo?.name || '?')[0].toUpperCase()}
+                                                            </div>
+                                                            <span className="text-[var(--secondary-foreground)]">{task.assignedTo?.name || 'Unassigned'}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-2 py-3">
+                                                        <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${task.status === 'DONE' ? 'bg-green-100/50 text-green-700' : 'bg-blue-100/50 text-blue-700'}`}>
+                                                            {task.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-2 py-3">
+                                                        <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${task.priority === 'HIGH' ? 'bg-red-100/50 text-red-700' : 'bg-[var(--hover)] text-[var(--secondary-foreground)]'}`}>
+                                                            {task.priority}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-2 py-3 text-right">
+                                                        <button onClick={() => { setEditingTask(task); setIsModalOpen(true); }} className="notion-button text-[11px]">Edit</button>
+                                                        <button onClick={() => setDeletingTaskId(task.id)} className="notion-button text-[11px] text-red-400">Delete</button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </section>
+                    </div>
+                )}
+            </div>
+
+            <TaskModal
+                isOpen={isModalOpen}
+                onClose={() => { setIsModalOpen(false); setEditingTask(null); }}
+                onSuccess={fetchDashboardData}
+                task={editingTask}
+                availableTasks={tasks}
+                teamId={activeTeamId}
+                teamMembers={activeTeam?.members || []}
+            />
+
+            <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={fetchDashboardData} teamId={activeTeamId} />
+            <UserSettingsModal isOpen={isUserSettingsOpen} onClose={() => setIsUserSettingsOpen(false)} />
+
+            {deletingTaskId && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded shadow-2xl max-w-sm w-full p-8 border border-[var(--border)]">
+                        <h2 className="text-xl font-bold text-[var(--foreground)] mb-2">Confirm Delete</h2>
+                        <p className="text-[var(--secondary-foreground)] text-sm mb-8">This task and all associated logs will be permanently deleted.</p>
+                        <div className="flex gap-4">
+                            <button onClick={() => setDeletingTaskId(null)} className="notion-button flex-1 py-2">Cancel</button>
+                            <button onClick={handleDelete} className="flex-1 py-2 bg-red-600 text-white font-medium rounded hover:bg-red-700 transition-colors shadow">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+=======
+// ─── Notion Logo ─────────────────────────────────────────────────────────────
+function NotionLogo({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+      <rect width="32" height="32" rx="6" fill="black" />
+      <path d="M8.5 8.5H14.5L22 20.5V11.5H24V23.5H18L10.5 11.5V20.5H8.5V8.5Z" fill="white" />
+    </svg>
+  );
+}
+
+// ─── Sidebar nav item ─────────────────────────────────────────────────────────
+function NavItem({
+  icon: Icon, label, active, onClick,
+}: { icon: any; label: string; active?: boolean; onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm transition-colors"
+      style={{
+        color: active ? '#050505' : '#6B6B6B',
+        background: active ? '#EBEBEA' : 'transparent',
+        fontWeight: active ? 600 : 400,
+        border: 'none',
+        textAlign: 'left',
+        cursor: 'pointer',
+      }}
+      onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = '#F7F6F3'; }}
+      onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+    >
+      <Icon size={15} />
+      <span>{label}</span>
+    </button>
+  );
+}
+
 // ─── Stat card ────────────────────────────────────────────────────────────────
 function StatCard({ label, value, icon: Icon, iconColor }: { label: string; value: any; icon: any; iconColor: string }) {
   return (
     <div
-      className="p-5 rounded-xl transition-all hover:shadow-sm"
+      className="p-5 rounded-xl"
       style={{ background: '#FFFFFF', border: '1px solid #E8E8E8' }}
     >
       <div className="flex items-start justify-between mb-3">
-        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#AEACAA' }}>
+        <span className="text-xs font-medium uppercase tracking-wider" style={{ color: '#AEACAA' }}>
           {label}
         </span>
         <Icon size={16} style={{ color: iconColor }} />
@@ -42,8 +367,39 @@ function StatCard({ label, value, icon: Icon, iconColor }: { label: string; valu
   );
 }
 
+// ─── Status badge ─────────────────────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+  const styles: Record<string, { bg: string; color: string; label: string }> = {
+    DONE:        { bg: '#D4F7E0', color: '#1A7341', label: 'Done' },
+    IN_PROGRESS: { bg: '#D0E8FF', color: '#0057B3', label: 'In Progress' },
+    TODO:        { bg: '#F7F6F3', color: '#6B6B6B', label: 'To Do' },
+  };
+  const s = styles[status] || styles.TODO;
+  return (
+    <span className="px-2 py-0.5 rounded text-xs font-medium" style={{ background: s.bg, color: s.color }}>
+      {s.label}
+    </span>
+  );
+}
+
+// ─── Priority badge ───────────────────────────────────────────────────────────
+function PriorityBadge({ priority }: { priority: string }) {
+  const styles: Record<string, { bg: string; color: string }> = {
+    HIGH:   { bg: '#FFE8E8', color: '#B91C1C' },
+    MEDIUM: { bg: '#FFF3D0', color: '#92400E' },
+    LOW:    { bg: '#F7F6F3', color: '#6B6B6B' },
+  };
+  const s = styles[priority] || styles.LOW;
+  return (
+    <span className="px-2 py-0.5 rounded text-xs font-medium" style={{ background: s.bg, color: s.color }}>
+      {priority.charAt(0) + priority.slice(1).toLowerCase()}
+    </span>
+  );
+}
+
+// ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [tasks, setTasks] = useState([]);
@@ -58,8 +414,7 @@ export default function DashboardPage() {
   const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
-  const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
-  const [activeTeam, setActiveTeam] = useState<any>(null);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'gantt'>('table');
   const [showAnalytics, setShowAnalytics] = useState(false);
 
@@ -67,29 +422,17 @@ export default function DashboardPage() {
     try {
       const [tasksRes, analyticsRes] = await Promise.all([
         api.get('/tasks', {
-          params: {
-            search,
-            status,
-            priority,
-            page,
-            limit: 10,
-            teamId: activeTeamId || undefined
-          }
+          params: { search, status, priority, page, limit: 10, workspaceId: activeWorkspaceId || undefined },
         }),
-        api.get('/analytics/overview')
+        api.get('/analytics/overview'),
       ]);
       setTasks(tasksRes.data.tasks);
       setTotalPages(tasksRes.data.pagination.totalPages);
       setAnalytics(analyticsRes.data);
-
-      if (activeTeamId) {
-        const teamRes = await api.get(`/teams/${activeTeamId}`);
-        setActiveTeam(teamRes.data);
-      }
     } catch (error) {
       console.error('Failed to fetch data', error);
     }
-  }, [search, status, priority, page, activeTeamId]);
+  }, [search, status, priority, page, activeWorkspaceId]);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -106,28 +449,16 @@ export default function DashboardPage() {
 
   const toggleTaskStatus = async (task: any) => {
     const newStatus = task.status === 'DONE' ? 'TODO' : 'DONE';
-
     setTasks((prev: any) => prev.map((t: any) =>
       t.id === task.id ? { ...t, status: newStatus } : t
     ));
-
     try {
       if (newStatus === 'DONE') {
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#006ADC', '#68B23A', '#E9A358', '#8B5CF6']
-        });
+        confetti({ particleCount: 100, spread: 60, origin: { y: 0.6 }, colors: ['#006ADC', '#68B23A', '#E9A358'] });
       }
-
-      await api.put(`/tasks/${task.id}`, {
-        ...task,
-        status: newStatus
-      });
+      await api.put(`/tasks/${task.id}`, { ...task, status: newStatus });
       fetchDashboardData();
-    } catch (error) {
-      console.error('Failed to update task status', error);
+    } catch {
       setTasks((prev: any) => prev.map((t: any) =>
         t.id === task.id ? { ...t, status: task.status } : t
       ));
@@ -137,190 +468,529 @@ export default function DashboardPage() {
   if (authLoading || !user) return null;
 
   return (
-    <div className="space-y-12 max-w-[1200px] mx-auto">
-      {/* Welcome Heading */}
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-2xl font-bold mb-1" style={{ color: '#050505', letterSpacing: '-0.02em' }}>
-            Good morning, {(user as any).name?.split(' ')[0]} 👋
-          </h2>
-          <p className="text-sm" style={{ color: '#6B6B6B' }}>
-            Here&apos;s what&apos;s happening in your workspace today.
-          </p>
-        </div>
-        <div className="flex gap-2 items-center">
-          <TeamSwitcher activeTeamId={activeTeamId} onTeamChange={setActiveTeamId} />
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-            style={{
-              background: '#F7F6F3',
-              border: '1px solid #E8E8E8',
-              color: '#050505',
-              cursor: 'pointer',
-            }}
-          >
-            <FileText size={14} />
-            <span>Import</span>
-          </button>
-          <button
-            onClick={() => { setEditingTask(null); setIsModalOpen(true); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-white shadow-sm"
-            style={{ background: '#006ADC', border: 'none', cursor: 'pointer' }}
-          >
-            <Plus size={14} />
-            <span>New Task</span>
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen flex" style={{ background: '#FFFFFF', fontFamily: 'Inter, sans-serif' }}>
 
-      {showAnalytics && activeTeamId ? (
-        <WorkloadAnalytics teamId={activeTeamId} />
-      ) : (
-        <div className="space-y-12">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Total Tasks" value={analytics?.totalTasks ?? 0} icon={ListTodo} iconColor="#006ADC" />
-            <StatCard label="Completed" value={analytics?.completedTasks ?? 0} icon={CheckCircle2} iconColor="#68B23A" />
-            <StatCard label="Pending" value={analytics?.pendingTasks ?? 0} icon={Clock} iconColor="#E9A358" />
-            <StatCard label="Success Rate" value={`${analytics?.completionRate ?? 0}%`} icon={ArrowUpRight} iconColor="#8B5CF6" />
+      {/* ── Sidebar ────────────────────────────────────────────────────────── */}
+      <aside
+        className="w-60 flex-shrink-0 hidden md:flex flex-col h-screen sticky top-0"
+        style={{ background: '#F7F6F3', borderRight: '1px solid #E8E8E8' }}
+      >
+        {/* Workspace header */}
+        <div
+          className="flex items-center gap-2 px-3 py-3 mx-2 mt-2 rounded-md cursor-pointer"
+          style={{ transition: 'background 0.15s' }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = '#EBEBEA')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+        >
+          <NotionLogo size={20} />
+          <span className="text-sm font-semibold flex-1 truncate" style={{ color: '#050505' }}>
+            {(user as any).name?.split(' ')[0] ?? 'My'}&apos;s Workspace
+          </span>
+          <ChevronDown size={14} style={{ color: '#AEACAA' }} />
+        </div>
+
+        {/* Workspace switcher */}
+        <div className="px-3 pt-1">
+          <WorkspaceSwitcher
+            activeWorkspaceId={activeWorkspaceId}
+            onWorkspaceChange={setActiveWorkspaceId}
+          />
+        </div>
+
+        {/* Navigation */}
+        <nav className="px-2 pt-4 flex-1 space-y-0.5">
+          <div className="px-2 pb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#AEACAA' }}>
+              Workspace
+            </span>
+          </div>
+          <NavItem
+            icon={LayoutDashboard}
+            label="Dashboard"
+            active={!showAnalytics}
+            onClick={() => setShowAnalytics(false)}
+          />
+          {activeWorkspaceId && (
+            <NavItem
+              icon={BarChart3}
+              label="Team Insights"
+              active={showAnalytics}
+              onClick={() => setShowAnalytics(true)}
+            />
+          )}
+        </nav>
+
+        {/* Bottom nav */}
+        <div className="px-2 pb-3 space-y-0.5 border-t pt-3" style={{ borderColor: '#E8E8E8' }}>
+          <NavItem icon={Settings} label="Settings & MFA" onClick={() => setIsUserSettingsOpen(true)} />
+          <NavItem icon={LogOut} label="Log out" onClick={logout} />
+        </div>
+      </aside>
+
+      {/* ── Main Content ────────────────────────────────────────────────────── */}
+      <main className="flex-1 overflow-y-auto">
+
+        {/* Top header bar */}
+        <div
+          className="sticky top-0 z-10 flex items-center justify-between px-8 py-3 border-b"
+          style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)', borderColor: '#E8E8E8' }}
+        >
+          <div>
+            <h1 className="text-base font-semibold" style={{ color: '#050505' }}>
+              {showAnalytics ? 'Team Insights' : 'Dashboard'}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
+              style={{
+                background: '#F7F6F3',
+                border: '1px solid #E8E8E8',
+                color: '#050505',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#EBEBEA')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#F7F6F3')}
+            >
+              <FileText size={14} />
+              Import PDF
+            </button>
+            <button
+              onClick={() => { setEditingTask(null); setIsModalOpen(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-white"
+              style={{ background: '#006ADC', border: 'none', cursor: 'pointer' }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#0057B3')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#006ADC')}
+            >
+              <Plus size={14} />
+              New Task
+            </button>
+          </div>
+        </div>
+
+        {/* Page body */}
+        <div className="px-8 py-6 max-w-[1200px]">
+
+          {/* Welcome heading */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-1" style={{ color: '#050505', letterSpacing: '-0.02em' }}>
+              Good morning, {(user as any).name?.split(' ')[0]} 👋
+            </h2>
+            <p className="text-sm" style={{ color: '#6B6B6B' }}>
+              Here&apos;s what&apos;s happening in your workspace today.
+            </p>
           </div>
 
-          {/* Chart Section */}
-          <div className="rounded-xl p-6" style={{ background: '#FFFFFF', border: '1px solid #E8E8E8' }}>
-            <h3 className="text-sm font-semibold mb-6 flex items-center gap-2" style={{ color: '#050505' }}>
-              <Calendar size={15} style={{ color: '#AEACAA' }} /> Task Creation Trend (7D)
-            </h3>
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={analytics?.tasksCreatedPerDay || []}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8E8E8" />
-                  <XAxis dataKey="date" stroke="#AEACAA" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => new Date(val).toLocaleDateString()} />
-                  <YAxis hide />
-                  <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #E8E8E8', borderRadius: '8px', fontSize: '12px' }} />
-                  <Line type="monotone" dataKey="count" stroke="#006ADC" strokeWidth={2} dot={{ r: 3, fill: '#006ADC' }} activeDot={{ r: 5 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Task Database View */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between border-b" style={{ borderColor: '#E8E8E8', paddingBottom: '8px' }}>
-              <div className="flex items-center gap-4">
-                <button onClick={() => setViewMode('table')} className={`text-sm font-medium pb-2 -mb-2 ${viewMode === 'table' ? 'text-[#050505] border-b-2 border-[#050505]' : 'text-[#6B6B6B] hover:text-[#050505]'}`}>
-                  Table View
-                </button>
-                <button onClick={() => setViewMode('gantt')} className={`text-sm font-medium pb-2 -mb-2 ${viewMode === 'gantt' ? 'text-[#050505] border-b-2 border-[#050505]' : 'text-[#6B6B6B] hover:text-[#050505]'}`}>
-                  Gantt View
-                </button>
+          {/* Analytics view */}
+          {showAnalytics && activeWorkspaceId ? (
+            <WorkloadAnalytics workspaceId={activeWorkspaceId} />
+          ) : (
+            <>
+              {/* Stats grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <StatCard label="Total Tasks" value={analytics?.totalTasks ?? 0} icon={ListTodo} iconColor="#006ADC" />
+                <StatCard label="Completed" value={analytics?.completedTasks ?? 0} icon={CheckCircle2} iconColor="#68B23A" />
+                <StatCard label="Pending" value={analytics?.pendingTasks ?? 0} icon={Clock} iconColor="#E9A358" />
+                <StatCard label="Completion Rate" value={`${analytics?.completionRate ?? 0}%`} icon={ArrowUpRight} iconColor="#8B5CF6" />
               </div>
-              <div className="flex items-center gap-2">
-                <div className="relative group">
-                  <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#AEACAA]" />
-                  <input
-                    type="text"
-                    placeholder="Filter tasks..."
-                    className="text-xs bg-[#F7F6F3] border border-transparent rounded px-7 py-1 w-40 focus:bg-white focus:border-[#006ADC] transition-all outline-none"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
+
+              {/* Chart */}
+              <div
+                className="rounded-xl mb-8 p-6"
+                style={{ background: '#FFFFFF', border: '1px solid #E8E8E8' }}
+              >
+                <h3 className="text-sm font-semibold mb-5 flex items-center gap-2" style={{ color: '#050505' }}>
+                  <Calendar size={15} style={{ color: '#AEACAA' }} />
+                  Task creation trend — last 7 days
+                </h3>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analytics?.tasksCreatedPerDay || []}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0EFED" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#AEACAA"
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      />
+                      <YAxis stroke="#AEACAA" fontSize={11} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        contentStyle={{
+                          background: '#FFFFFF',
+                          border: '1px solid #E8E8E8',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="count"
+                        stroke="#006ADC"
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: '#006ADC', strokeWidth: 0 }}
+                        activeDot={{ r: 5, fill: '#006ADC' }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
-                <select value={status} onChange={(e) => setStatus(e.target.value)} className="bg-transparent text-[11px] font-medium text-[#6B6B6B] outline-none cursor-pointer">
-                  <option value="">Status</option>
-                  <option value="TODO">To Do</option>
-                  <option value="IN_PROGRESS">Progress</option>
-                  <option value="DONE">Done</option>
-                </select>
               </div>
-            </div>
 
-            {viewMode === 'gantt' ? (
-              <GanttChart tasks={tasks} onTaskClick={(t: any) => { setEditingTask(t); setIsModalOpen(true); }} />
-            ) : (
-              <div className="overflow-x-auto rounded-xl border" style={{ borderColor: '#E8E8E8' }}>
-                <table className="w-full text-[13px] border-collapse bg-white">
-                  <thead>
-                    <tr className="bg-[#F7F6F3] text-[#AEACAA] text-left">
-                      <th className="px-4 py-3 border-b border-[#E8E8E8] w-10"></th>
-                      <th className="px-4 py-3 border-b border-[#E8E8E8] font-semibold uppercase tracking-wider text-[10px]">Objective</th>
-                      <th className="px-4 py-3 border-b border-[#E8E8E8] font-semibold uppercase tracking-wider text-[10px]">Assignee</th>
-                      <th className="px-4 py-3 border-b border-[#E8E8E8] font-semibold uppercase tracking-wider text-[10px]">Status</th>
-                      <th className="px-4 py-3 border-b border-[#E8E8E8] font-semibold uppercase tracking-wider text-[10px]">Priority</th>
-                      <th className="px-4 py-3 border-b border-[#E8E8E8] font-semibold uppercase tracking-wider text-[10px] text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#E8E8E8]">
-                    {tasks.map((task: any) => (
-                      <tr key={task.id} className="group hover:bg-[#F7F6F3] transition-colors">
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => toggleTaskStatus(task)}
-                            className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${task.status === 'DONE' ? 'bg-[#68B23A] border-[#68B23A] text-white' : 'border-[#AEACAA] group-hover:border-[#006ADC]'}`}
+              {/* View toggle + task table */}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold" style={{ color: '#050505' }}>Tasks</h3>
+                <div
+                  className="flex items-center gap-0.5 rounded-lg p-0.5"
+                  style={{ background: '#F7F6F3', border: '1px solid #E8E8E8' }}
+                >
+                  {['table', 'gantt'].map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setViewMode(m as 'table' | 'gantt')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+                      style={{
+                        background: viewMode === m ? '#FFFFFF' : 'transparent',
+                        color: viewMode === m ? '#050505' : '#6B6B6B',
+                        border: viewMode === m ? '1px solid #E8E8E8' : '1px solid transparent',
+                        boxShadow: viewMode === m ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {m === 'table' ? <Table2 size={13} /> : <BarChart3 size={13} />}
+                      {m.charAt(0).toUpperCase() + m.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Gantt view */}
+              {viewMode === 'gantt' ? (
+                <GanttChart
+                  tasks={tasks}
+                  onTaskClick={(t: any) => { setEditingTask(t); setIsModalOpen(true); }}
+                />
+              ) : (
+                /* Table view */
+                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E8E8E8' }}>
+                  {/* Filters */}
+                  <div
+                    className="px-4 py-3 flex flex-wrap gap-3 items-center justify-between"
+                    style={{ background: '#F7F6F3', borderBottom: '1px solid #E8E8E8' }}
+                  >
+                    <div className="relative flex-1 min-w-[220px]">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#AEACAA' }} />
+                      <input
+                        type="text"
+                        placeholder="Search tasks..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        style={{
+                          paddingLeft: '32px',
+                          height: '32px',
+                          fontSize: '13px',
+                          border: '1px solid #E8E8E8',
+                          borderRadius: '6px',
+                          background: '#FFFFFF',
+                          color: '#050505',
+                          outline: 'none',
+                          width: '100%',
+                        }}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <select
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                        style={{
+                          height: '32px',
+                          fontSize: '12px',
+                          border: '1px solid #E8E8E8',
+                          borderRadius: '6px',
+                          background: '#FFFFFF',
+                          color: '#050505',
+                          padding: '0 8px',
+                          outline: 'none',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value="">All Status</option>
+                        <option value="TODO">To Do</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="DONE">Done</option>
+                      </select>
+                      <select
+                        value={priority}
+                        onChange={(e) => setPriority(e.target.value)}
+                        style={{
+                          height: '32px',
+                          fontSize: '12px',
+                          border: '1px solid #E8E8E8',
+                          borderRadius: '6px',
+                          background: '#FFFFFF',
+                          color: '#050505',
+                          padding: '0 8px',
+                          outline: 'none',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value="">All Priority</option>
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="HIGH">High</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Table */}
+                  <table className="w-full text-left" style={{ background: '#FFFFFF' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #E8E8E8', background: '#F7F6F3' }}>
+                        {['', 'Title', 'CVE / Ref', 'Status', 'Priority', 'Due Date', ''].map((h, i) => (
+                          <th
+                            key={i}
+                            className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider"
+                            style={{ color: '#AEACAA' }}
                           >
-                            {task.status === 'DONE' && <Check size={11} strokeWidth={4} />}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className={`font-medium ${task.status === 'DONE' ? 'text-[#AEACAA] line-through' : 'text-[#050505]'}`}>{task.title}</div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 rounded-full bg-[#F7F6F3] flex items-center justify-center text-[10px] font-bold border border-[#E8E8E8] text-[#050505]">
-                              {(task.assignedTo?.name || '?')[0].toUpperCase()}
-                            </div>
-                            <span className="text-[#6B6B6B]">{task.assignedTo?.name || 'Unassigned'}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${task.status === 'DONE' ? 'bg-[#D4F7E0] text-[#1A7341]' : 'bg-[#D0E8FF] text-[#0057B3]'}`}>
-                            {task.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${task.priority === 'HIGH' ? 'bg-[#FFE8E8] text-[#B91C1C]' : 'bg-[#F7F6F3] text-[#6B6B6B]'}`}>
-                            {task.priority}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right space-x-2">
-                          <button onClick={() => { setEditingTask(task); setIsModalOpen(true); }} className="text-[#006ADC] hover:underline font-medium">Edit</button>
-                          <button onClick={() => setDeletingTaskId(task.id)} className="text-[#F87171] hover:underline font-medium">Delete</button>
-                        </td>
+                            {h}
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        </div>
-      )}
+                    </thead>
+                    <tbody>
+                      {tasks.map((task: any) => (
+                        <tr
+                          key={task.id}
+                          style={{ borderBottom: '1px solid #F0EFED' }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = '#FAFAFA')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
+                        >
+                          {/* Done toggle */}
+                          <td className="px-4 py-3 w-10">
+                            <button
+                              onClick={() => toggleTaskStatus(task)}
+                              className="w-5 h-5 rounded flex items-center justify-center transition-all"
+                              title={task.status === 'DONE' ? 'Mark as Todo' : 'Mark as Done'}
+                              style={{
+                                border: task.status === 'DONE' ? 'none' : '1.5px solid #AEACAA',
+                                background: task.status === 'DONE' ? '#68B23A' : '#FFFFFF',
+                                color: '#FFFFFF',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {task.status === 'DONE' && <Check size={11} strokeWidth={3} />}
+                            </button>
+                          </td>
 
+                          {/* Title */}
+                          <td className="px-4 py-3 max-w-[240px]">
+                            <div
+                              className="text-sm font-medium flex items-center gap-1.5 flex-wrap"
+                              style={{ color: task.status === 'DONE' ? '#AEACAA' : '#050505', textDecoration: task.status === 'DONE' ? 'line-through' : 'none' }}
+                            >
+                              {task.title}
+                              {task.subTasks && task.subTasks.length > 0 && (
+                                <span className="px-1.5 py-0.5 rounded text-xs" style={{ background: '#F7F6F3', color: '#6B6B6B' }}>
+                                  {task.subTasks.filter((s: any) => s.status === 'DONE').length}/{task.subTasks.length}
+                                </span>
+                              )}
+                              {task.recurrence && (
+                                <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#F3F0FF', color: '#7C3AED' }}>
+                                  🔁 {task.recurrence}
+                                </span>
+                              )}
+                              {task.attachmentUrl && (
+                                <a
+                                  href={`${(process.env.NEXT_PUBLIC_API_URL || '').replace('/api', '')}${task.attachmentUrl}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={task.attachmentName}
+                                  style={{ color: '#006ADC' }}
+                                >
+                                  <Paperclip size={13} />
+                                </a>
+                              )}
+                            </div>
+                            {task.description && (
+                              <div className="text-xs truncate max-w-[200px] mt-0.5" style={{ color: '#AEACAA' }}>
+                                {task.description}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* CVE */}
+                          <td className="px-4 py-3">
+                            {task.cveId ? (
+                              <span className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded" style={{ background: '#F7F6F3', color: '#050505' }}>
+                                <FileText size={11} /> {task.cveId}
+                              </span>
+                            ) : (
+                              <span style={{ color: '#D3D3D0' }}>—</span>
+                            )}
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-4 py-3">
+                            <StatusBadge status={task.status} />
+                          </td>
+
+                          {/* Priority */}
+                          <td className="px-4 py-3">
+                            <PriorityBadge priority={task.priority} />
+                          </td>
+
+                          {/* Due date */}
+                          <td className="px-4 py-3 text-xs" style={{ color: '#6B6B6B' }}>
+                            {task.dueDate
+                              ? new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                              : '—'}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => { setEditingTask(task); setIsModalOpen(true); }}
+                                className="text-xs font-medium"
+                                style={{ color: '#006ADC', background: 'none', border: 'none', cursor: 'pointer' }}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => setDeletingTaskId(task.id)}
+                                className="text-xs font-medium"
+                                style={{ color: '#EB5757', background: 'none', border: 'none', cursor: 'pointer' }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {tasks.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="text-center py-16">
+                            <div className="flex flex-col items-center gap-2">
+                              <ListTodo size={28} style={{ color: '#E8E8E8' }} />
+                              <p className="text-sm" style={{ color: '#AEACAA' }}>No tasks found</p>
+                              <button
+                                onClick={() => { setEditingTask(null); setIsModalOpen(true); }}
+                                className="text-sm font-medium mt-1"
+                                style={{ color: '#006ADC', background: 'none', border: 'none', cursor: 'pointer' }}
+                              >
+                                + Add your first task
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+
+                  {/* Pagination */}
+                  <div
+                    className="px-4 py-2.5 flex items-center justify-between"
+                    style={{ background: '#F7F6F3', borderTop: '1px solid #E8E8E8' }}
+                  >
+                    <span className="text-xs" style={{ color: '#AEACAA' }}>
+                      Page {page} of {totalPages}
+                    </span>
+                    <div className="flex gap-1">
+                      <button
+                        disabled={page === 1}
+                        onClick={() => setPage(page - 1)}
+                        className="p-1.5 rounded-md"
+                        style={{
+                          border: '1px solid #E8E8E8',
+                          background: '#FFFFFF',
+                          color: page === 1 ? '#D3D3D0' : '#050505',
+                          cursor: page === 1 ? 'default' : 'pointer',
+                        }}
+                      >
+                        <ChevronLeft size={14} />
+                      </button>
+                      <button
+                        disabled={page === totalPages}
+                        onClick={() => setPage(page + 1)}
+                        className="p-1.5 rounded-md"
+                        style={{
+                          border: '1px solid #E8E8E8',
+                          background: '#FFFFFF',
+                          color: page === totalPages ? '#D3D3D0' : '#050505',
+                          cursor: page === totalPages ? 'default' : 'pointer',
+                        }}
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </main>
+
+      {/* ── Modals ─────────────────────────────────────────────────────────── */}
       <TaskModal
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setEditingTask(null); }}
         onSuccess={fetchDashboardData}
         task={editingTask}
         availableTasks={tasks}
-        teamId={activeTeamId}
-        teamMembers={activeTeam?.members || []}
+        workspaceId={activeWorkspaceId}
       />
 
-      <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={fetchDashboardData} teamId={activeTeamId} />
-      <UserSettingsModal isOpen={isUserSettingsOpen} onClose={() => setIsUserSettingsOpen(false)} />
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={fetchDashboardData}
+        workspaceId={activeWorkspaceId}
+      />
 
+      <UserSettingsModal
+        isOpen={isUserSettingsOpen}
+        onClose={() => setIsUserSettingsOpen(false)}
+      />
+
+      {/* Delete confirm dialog */}
       {deletingTaskId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded shadow-2xl max-w-sm w-full p-8 border" style={{ borderColor: '#E8E8E8' }}>
-            <h2 className="text-xl font-bold text-[#050505] mb-2">Confirm Delete</h2>
-            <p className="text-[#6B6B6B] text-sm mb-8">This task and all associated logs will be permanently deleted.</p>
-            <div className="flex gap-4">
-              <button onClick={() => setDeletingTaskId(null)} className="flex-1 py-2 text-[#6B6B6B] font-medium hover:bg-[#F7F6F3] rounded transition-colors">Cancel</button>
-              <button onClick={handleDelete} className="flex-1 py-2 bg-[#F87171] text-white font-medium rounded hover:bg-red-600 transition-colors shadow-sm">Delete</button>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
+        >
+          <div
+            className="w-full max-w-sm p-6 rounded-xl"
+            style={{ background: '#FFFFFF', border: '1px solid #E8E8E8', boxShadow: '0 8px 40px rgba(0,0,0,0.16)' }}
+          >
+            <h2 className="text-base font-semibold mb-1" style={{ color: '#050505' }}>Delete task?</h2>
+            <p className="text-sm mb-5" style={{ color: '#6B6B6B' }}>
+              Are you sure? This action cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeletingTaskId(null)}
+                className="flex-1 py-2 rounded-lg text-sm font-medium"
+                style={{ background: '#F7F6F3', border: '1px solid #E8E8E8', color: '#050505', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-2 rounded-lg text-sm font-medium text-white"
+                style={{ background: '#EB5757', border: 'none', cursor: 'pointer' }}
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>
       )}
     </div>
   );
+>>>>>>> development
 }
