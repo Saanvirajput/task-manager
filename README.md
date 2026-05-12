@@ -1,8 +1,11 @@
 # 🛰️ TaskFlow: Notion-Inspired AI Productivity Ecosystem
 
 <div align="center">
+  <a href="https://saanvirajput.github.io/task-manager">
+    <img src="https://img.shields.io/badge/GitHub%20Pages%20-Live%20Demo-black?style=for-the-badge&logo=github" alt="GitHub Pages Demo" />
+  </a>
   <a href="https://task-manager-production-1e76.up.railway.app">
-    <img src="https://img.shields.io/badge/Live%20Demo%20-Launch%20Workspace-black?style=for-the-badge&logo=rocket" alt="Live Demo" />
+    <img src="https://img.shields.io/badge/Railway%20-Production-blue?style=for-the-badge&logo=rocket" alt="Railway Demo" />
   </a>
 </div>
 
